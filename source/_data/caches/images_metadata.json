@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "images": {
+    "http://example.com/images/01-avatar.webp": {
+      "updatedAt": "2026-11-10T01:57:50.017Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 160,
+        "height": 160
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          26.8229,
+          12.3442,
+          41.7155,
+          1
+        ]
+      }
+    },
+    "http://example.com/images/CP-disc.webp": {
+      "updatedAt": "2026-11-08T15:33:32.851Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 256,
+        "height": 256
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          32.7719,
+          21.11,
+          11.1819,
+          0.3581
+        ]
+      }
+    },
+    "https://example.github.io/Fx-blog/images/CP-disc.webp": {
+      "updatedAt": "2026-11-08T16:04:54.088Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 256,
+        "height": 256
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          32.7719,
+          21.11,
+          11.1819,
+          0.3581
+        ]
+      }
+    }
+  }
+}

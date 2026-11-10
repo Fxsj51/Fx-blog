@@ -1,0 +1,3 @@
+# 站点级图标补充（覆盖/扩充主题内置图标）
+# 主题会用 default:<name> 的键名来引用这里的图标
+default:music: <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3z"/></svg>

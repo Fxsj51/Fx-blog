@@ -1,0 +1,48 @@
+# 歌单唯一数据源：音乐页卡片和右下角侧栏播放器都从这里生成，不要在别处再写一份曲目。
+#
+# 字段说明：
+#   title       歌名
+#   artist      演奏者/作者
+#   source      来源站点，如 Wikimedia Commons
+#   year        可选，公开曲目的录音/出版年份
+#   cover       可选，相对路径（如 images/xxx.webp）或完整 URL；缺省用站内唱片封面
+#   audio       远程完整 https 地址；本地曲目写 music/audio/文件名.mp3
+#               （音频文件放在 source/music/audio/，见该目录 README）
+#   lrc         可选，本地歌词文件路径，如 music/lrc/my-song.lrc；
+#               缺省或文件为空/无时间轴时，音乐页歌词栏显示「纯音乐，请欣赏」
+#   duration    可选，mm:ss，仅用于列表展示，播放后以实际元数据为准
+#   license     授权类型，公开曲目必填
+#   attribution 署名要求，公开曲目必填；无需署名时写「无需署名」
+#   sourceUrl   可选，原页面链接
+#
+# 本地曲目（自己录制或已获得授权）不需要署名，license 写「本地曲目」即可。
+
+- title: Dance of the Gnomes
+  artist: Harold Dixon
+  source: Wikimedia Commons
+  year: 1927
+  audio: "https://upload.wikimedia.org/wikipedia/commons/9/97/Dance_of_the_Gnomes_by_Harold_Dixon_%281927%29.mp3"
+  duration: 2:03
+  license: Public domain
+  attribution: 无需署名
+  sourceUrl: "https://commons.wikimedia.org/wiki/File:Dance_of_the_Gnomes_by_Harold_Dixon_(1927).mp3"
+
+- title: Glad Rag
+  artist: J. Bodewalt Lampe（署名 Ribe Danmark）
+  source: Wikimedia Commons
+  year: 1910
+  audio: "https://upload.wikimedia.org/wikipedia/commons/c/cd/Glad_Rag_by_Ribe_Danmark_%281910%29.mp3"
+  duration: 2:46
+  license: Public domain
+  attribution: 无需署名
+  sourceUrl: "https://commons.wikimedia.org/wiki/File:Glad_Rag_by_Ribe_Danmark_(1910).mp3"
+
+- title: On the Syncopated Road
+  artist: George Barker
+  source: Wikimedia Commons
+  year: 1900
+  audio: "https://upload.wikimedia.org/wikipedia/commons/c/c3/On_the_Syncopated_Road_%281900%29_by_George_Barker.mp3"
+  duration: 2:19
+  license: Public domain
+  attribution: 无需署名
+  sourceUrl: "https://commons.wikimedia.org/wiki/File:On_the_Syncopated_Road_(1900)_by_George_Barker.mp3"

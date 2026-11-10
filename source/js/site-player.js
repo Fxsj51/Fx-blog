@@ -1,0 +1,296 @@
+/* 全站单例播放器：文档里只有一个 <audio> 实例，
+   音乐页卡片与右下角侧栏迷你播放器都只是它的视图。
+   - 音频节点常驻在 body 的隐藏宿主里，换页（SPA）时被移动到新页面的卡片，
+     移动同一个媒体元素不会中断播放、不会重新发起请求。
+   - preload="none" 且初始不设 src：点选曲目后才开始缓冲。 */
+(function () {
+  'use strict';
+
+  var HOST_ID = 'site-audio-host';
+  var ICON_PREV = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>';
+  var ICON_NEXT = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 5h2v14h-2zM4 5l11 7-11 7z"/></svg>';
+  var ICON_PLAY = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 5l12 7-12 7z"/></svg>';
+  var ICON_PAUSE = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
+  var ICON_LIST = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/></svg>';
+
+  var audio = null;
+  var index = -1;
+  var subscribers = [];
+  var playlistCache = null;
+  var mini = null;
+
+  function siteRoot() {
+    try {
+      var src = document.currentScript && document.currentScript.src;
+      if (src) return new URL(src).pathname.replace(/js\/site-player\.js(?:[?#].*)?$/, '');
+    } catch (e) {}
+    return '/';
+  }
+  var ROOT = siteRoot();
+
+  function readPlaylist() {
+    if (playlistCache) return playlistCache;
+    var list = [];
+    var el = document.getElementById('site-playlist');
+    if (el) {
+      try {
+        var data = JSON.parse(el.textContent || '[]');
+        if (Array.isArray(data)) list = data;
+      } catch (e) { list = []; }
+    }
+    playlistCache = list;
+    return list;
+  }
+
+  function host() {
+    var el = document.getElementById(HOST_ID);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = HOST_ID;
+      el.setAttribute('aria-hidden', 'true');
+      el.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;overflow:hidden;pointer-events:none';
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function formatTime(sec) {
+    if (!isFinite(sec) || sec <= 0) return '0:00';
+    var m = Math.floor(sec / 60);
+    var s = Math.floor(sec % 60);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function snapshot() {
+    var list = readPlaylist();
+    var track = index >= 0 && list[index] ? list[index] : null;
+    return {
+      index: index,
+      track: track,
+      playing: !!(audio && !audio.paused && !audio.ended),
+      currentTime: audio ? (audio.currentTime || 0) : 0,
+      duration: audio && isFinite(audio.duration) ? audio.duration : 0,
+      src: audio ? (audio.getAttribute('src') || '') : ''
+    };
+  }
+
+  function emit(type) {
+    var detail = snapshot();
+    subscribers.slice().forEach(function (fn) {
+      try { fn(detail, type || 'change'); } catch (e) {}
+    });
+    try {
+      document.dispatchEvent(new CustomEvent('siteplayer:' + (type || 'change'), { detail: detail }));
+    } catch (e) {}
+  }
+
+  function ensureAudio() {
+    if (audio) return audio;
+    audio = document.getElementById('music-audio');
+    if (!audio) {
+      audio = document.createElement('audio');
+      audio.id = 'music-audio';
+      audio.setAttribute('controls', '');
+      host().appendChild(audio);
+    }
+    audio.preload = 'none';
+    audio.addEventListener('play', function () { renderMini(); emit('change'); });
+    audio.addEventListener('pause', function () { renderMini(); emit('change'); });
+    audio.addEventListener('timeupdate', function () { renderMini(); emit('time'); });
+    audio.addEventListener('seeked', function () { renderMini(); emit('time'); });
+    audio.addEventListener('loadedmetadata', function () { renderMini(); emit('meta'); });
+    audio.addEventListener('ended', function () { play(index + 1); });
+    return audio;
+  }
+
+  function play(i) {
+    var list = readPlaylist();
+    if (!list.length) return;
+    if (typeof i !== 'number' || isNaN(i)) i = index >= 0 ? index : 0;
+    i = ((i % list.length) + list.length) % list.length;
+    var track = list[i];
+    if (!track || !track.url) return;
+    var a = ensureAudio();
+    var absolute = new URL(track.url, document.baseURI).href;
+    if (index !== i || !a.getAttribute('src')) {
+      index = i;
+      a.setAttribute('src', absolute);
+      try { a.load(); } catch (e) {}
+    }
+    var p = a.play();
+    if (p && typeof p.catch === 'function') p.catch(function () {});
+    renderMini();
+    emit('change');
+  }
+
+  function toggle() {
+    var a = ensureAudio();
+    if (!a.getAttribute('src')) { play(index >= 0 ? index : 0); return; }
+    if (a.paused) {
+      var p = a.play();
+      if (p && typeof p.catch === 'function') p.catch(function () {});
+    } else {
+      a.pause();
+    }
+    renderMini();
+    emit('change');
+  }
+
+  function seek(seconds) {
+    if (!audio) return;
+    var dur = audio.duration;
+    if (!isFinite(dur) || dur <= 0) return;
+    audio.currentTime = Math.max(0, Math.min(dur, seconds));
+    emit('time');
+  }
+
+  function mount(el) {
+    if (!el) return;
+    var a = ensureAudio();
+    if (a.parentNode !== el) el.appendChild(a);
+    renderMini();
+  }
+
+  function unmount() {
+    if (!audio) return;
+    if (audio.parentNode !== host()) host().appendChild(audio);
+  }
+
+  function subscribe(fn) {
+    if (typeof fn !== 'function') return function () {};
+    subscribers.push(fn);
+    return function () {
+      var i = subscribers.indexOf(fn);
+      if (i >= 0) subscribers.splice(i, 1);
+    };
+  }
+
+  // ---------------- 侧栏迷你视图 ----------------
+  function buildMini() {
+    var content = document.getElementById('music-drawer__content');
+    if (!content) return null;
+    if (mini && mini.root.parentNode === content) return mini;
+    if (mini && mini.root.parentNode) mini.root.parentNode.removeChild(mini.root);
+
+    var root = document.createElement('div');
+    root.className = 'site-mini';
+    root.innerHTML =
+      '<button type="button" class="site-mini__disc" data-act="toggle" aria-label="播放或暂停">' +
+        '<img class="site-mini__cover" alt="" width="110" height="110">' +
+      '</button>' +
+      '<div class="site-mini__info">' +
+        '<a class="site-mini__title" href="' + ROOT + 'music/">未选择曲目</a>' +
+        '<div class="site-mini__artist">点击进入音乐页</div>' +
+        '<div class="site-mini__bar" data-act="seek" role="slider" aria-label="播放进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">' +
+          '<div class="site-mini__played"></div>' +
+        '</div>' +
+        '<div class="site-mini__foot">' +
+          '<span class="site-mini__time" data-role="cur">0:00</span>' +
+          '<span class="site-mini__btns">' +
+            '<button type="button" data-act="prev" aria-label="上一首">' + ICON_PREV + '</button>' +
+            '<button type="button" class="site-mini__toggle" data-act="toggle" aria-label="播放">' + ICON_PLAY + '</button>' +
+            '<button type="button" data-act="next" aria-label="下一首">' + ICON_NEXT + '</button>' +
+            '<a class="site-mini__list" href="' + ROOT + 'music/" aria-label="打开音乐页">' + ICON_LIST + '</a>' +
+          '</span>' +
+          '<span class="site-mini__time" data-role="dur">0:00</span>' +
+        '</div>' +
+      '</div>';
+
+    content.appendChild(root);
+    mini = {
+      root: root,
+      cover: root.querySelector('.site-mini__cover'),
+      title: root.querySelector('.site-mini__title'),
+      artist: root.querySelector('.site-mini__artist'),
+      bar: root.querySelector('.site-mini__bar'),
+      played: root.querySelector('.site-mini__played'),
+      cur: root.querySelector('[data-role="cur"]'),
+      dur: root.querySelector('[data-role="dur"]'),
+      toggle: root.querySelector('.site-mini__toggle')
+    };
+
+    root.addEventListener('click', function (e) {
+      var target = e.target.closest ? e.target.closest('[data-act]') : null;
+      if (!target) return;
+      var act = target.getAttribute('data-act');
+      if (act === 'toggle') { e.preventDefault(); toggle(); return; }
+      if (act === 'prev') { e.preventDefault(); play(index - 1); return; }
+      if (act === 'next') { e.preventDefault(); play(index + 1); return; }
+      if (act === 'seek') {
+        e.preventDefault();
+        var rect = mini.bar.getBoundingClientRect();
+        var ratio = rect.width ? (e.clientX - rect.left) / rect.width : 0;
+        var dur = audio && isFinite(audio.duration) ? audio.duration : 0;
+        if (dur > 0) seek(ratio * dur);
+      }
+    });
+
+    renderMini();
+    return mini;
+  }
+
+  function renderMini() {
+    if (!mini) return;
+    var st = snapshot();
+    var track = st.track;
+    mini.root.classList.toggle('is-playing', st.playing);
+    mini.title.textContent = track ? track.title : '未选择曲目';
+    mini.artist.textContent = track ? (track.artist || '未知歌手') : '点击进入音乐页';
+    if (track && track.cover) {
+      if (mini.cover.getAttribute('src') !== track.cover) mini.cover.setAttribute('src', track.cover);
+      mini.cover.style.display = '';
+    } else {
+      mini.cover.removeAttribute('src');
+      mini.cover.style.display = 'none';
+    }
+    var dur = st.duration || (track && track.duration) || 0;
+    var pct = dur > 0 ? Math.min(100, (st.currentTime / dur) * 100) : 0;
+    mini.played.style.width = pct + '%';
+    mini.bar.setAttribute('aria-valuenow', String(Math.round(pct)));
+    mini.cur.textContent = formatTime(st.currentTime);
+    mini.dur.textContent = formatTime(dur);
+    mini.toggle.innerHTML = st.playing ? ICON_PAUSE : ICON_PLAY;
+    mini.toggle.setAttribute('aria-label', st.playing ? '暂停' : '播放');
+  }
+
+  // 音乐页有自己的大播放器，抽屉不重复；无右栏页面保持原状（不出现播放器）
+  function syncDrawer() {
+    var drawer = document.getElementById('music-drawer');
+    if (!drawer) return;
+    var hide = !!document.querySelector('.music-page') || !document.getElementById('rightbar-region');
+    if (hide) {
+      drawer.style.setProperty('display', 'none', 'important');
+      return;
+    }
+    drawer.style.removeProperty('display');
+    buildMini();
+    renderMini();
+  }
+
+  window.SitePlayer = {
+    ensure: ensureAudio,
+    play: play,
+    toggle: toggle,
+    next: function () { play(index + 1); },
+    prev: function () { play(index - 1); },
+    seek: seek,
+    mount: mount,
+    unmount: unmount,
+    subscribe: subscribe,
+    state: snapshot,
+    get playlist() { return readPlaylist(); },
+    get index() { return index; }
+  };
+
+  function boot() {
+    if (document.getElementById('music-audio')) ensureAudio();
+    syncDrawer();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+  } else {
+    boot();
+  }
+  document.addEventListener('stellar:navigation-complete', syncDrawer);
+})();

@@ -1,0 +1,15 @@
+diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/hexo-theme-stellar/source/js/main.js
+index 28ff615..b1b27d2 100644
+--- a/node_modules/hexo-theme-stellar/source/js/main.js
++++ b/node_modules/hexo-theme-stellar/source/js/main.js
+@@ -97,8 +97,8 @@ const hud = {
+ 
+ const siteShell = document.querySelector('.site-shell');
+ const leftbarStateKey = 'stellar:v2:leftbar-state';
+-const leftbarDrawerQuery = '(max-width: 768px)';
+-const leftbarHiddenQuery = '(max-width: 768px)';
++const leftbarDrawerQuery = '(max-width: 900px)';
++const leftbarHiddenQuery = '(max-width: 900px)';
+ const rightbarDrawerQuery = '(max-width: 1180px)';
+ let shellDrawerTrigger = null;
+ let searchDialogTrigger = null;
