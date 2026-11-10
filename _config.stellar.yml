@@ -203,7 +203,7 @@ inject:
         display: none;
         align-items: center;
         gap: var(--gap-lg);
-        padding: 10px 16px;
+        padding: var(--gap-md) var(--gap-xl);
         position: fixed;
         top: 0;
         left: 0;
@@ -234,7 +234,7 @@ inject:
       #mobile-brand-bar .mbb-tagline {
         font-size: var(--fs-11);
         color: var(--text-muted);
-        margin-top: 2px;
+        margin-top: var(--gap-2);
       }
       #mobile-brand-bar .mbb-menu-btn {
         display: flex;
@@ -392,6 +392,19 @@ inject:
         --gap-lg: 12px;
         --gap-xl: 16px;
         --gap-2xl: 24px;
+        /* 以下为原裸值等值补档：值等于替换前，未做任何调整；命名按像素值，避免给一次性尺寸编语义名 */
+        --gap-2: 2px;
+        --gap-4: 4px;
+        --gap-14: 14px;
+        --gap-18: 18px;
+        --gap-20: 20px;
+        --gap-28: 28px;
+        --gap-30: 30px;
+        --gap-32: 32px;
+        --gap-40: 40px;
+        --gap-80: 80px;
+        --gap-120: 120px;
+        --gap-160: 160px;
 
         /* ===== 背景模糊档位 ===== */
         --blur-bar: blur(20px) saturate(150%);
@@ -499,7 +512,7 @@ inject:
         border: var(--border-w) solid var(--surface-border) !important;
         border-radius: var(--radius-xl) !important;
         box-shadow: var(--shadow-surface) !important;
-        padding: 30px 24px !important;
+        padding: var(--gap-30) var(--gap-2xl) !important;
         display: flex !important;
         flex-direction: column !important;
         transition: left var(--dur-slow) var(--ease), padding var(--dur-slow) var(--ease) !important;
@@ -508,7 +521,7 @@ inject:
 
       html[data-leftbar-state="collapsed"] .site-shell:not([data-drawer='leftbar']) #leftbar-region .site-region__surface {
         left: 8px !important;
-        padding: 20px 6px !important;
+        padding: var(--gap-20) var(--gap-xs) !important;
         align-items: center !important;
       }
 
@@ -539,7 +552,7 @@ inject:
         width: 100% !important;
         max-width: 100% !important; 
         margin: 0 !important;
-        padding: 20px 40px 160px 40px !important; 
+        padding: var(--gap-20) var(--gap-40) var(--gap-160) var(--gap-40) !important; 
         box-sizing: border-box !important; 
         overflow: hidden !important;
         transition: none !important;
@@ -601,7 +614,7 @@ inject:
         }
 
         aside#rightbar-region .widget-stack--rightbar {
-          padding: 0 0 80px 0 !important; 
+          padding: 0 0 var(--gap-80) 0 !important; 
           height: 100% !important;
           overflow-y: auto !important;
         }
@@ -619,7 +632,7 @@ inject:
           border-radius: var(--radius-xl) !important;
           border: var(--border-w) solid var(--white-10) !important;
           box-shadow: var(--shadow-drawer) !important;
-          padding: 24px 20px !important;
+          padding: var(--gap-2xl) var(--gap-20) !important;
           margin: 0 !important;
           width: 100% !important;
         }
@@ -682,7 +695,7 @@ inject:
         }
 
         main.site-main {
-          padding: 80px 20px 160px 20px !important;
+          padding: var(--gap-80) var(--gap-20) var(--gap-160) var(--gap-20) !important;
           min-height: 100vh !important;
           max-width: 1000px !important;
           margin: 0 auto !important;
@@ -723,13 +736,13 @@ inject:
         flex-direction: row !important;
         align-items: center !important;
         gap: var(--gap-xl) !important;
-        padding: 10px 0 30px 0 !important;
+        padding: var(--gap-md) 0 var(--gap-30) 0 !important;
         white-space: nowrap !important;
       }
       .brand-image { width: 48px !important; height: 48px !important; margin: 0 !important; flex-shrink: 0 !important; }
       .brand-image img { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: var(--radius-circle) !important; }
       .brand-title { display: flex !important; flex-direction: column !important; align-items: flex-start !important; }
-      .brand-title .brand-name { font-size: var(--fs-22) !important; font-weight: var(--fw-semibold) !important; margin-bottom: 4px !important; color: var(--text-primary) !important; }
+      .brand-title .brand-name { font-size: var(--fs-22) !important; font-weight: var(--fw-semibold) !important; margin-bottom: var(--gap-4) !important; color: var(--text-primary) !important; }
       .brand-title .brand-tagline { font-size: var(--fs-13) !important; opacity: 0.7 !important; color: var(--text-primary) !important; }
 
       /* 折叠态只作用于左栏常驻的区间（≥901px），抽屉始终展示完整内容（与参考站一致） */
@@ -746,14 +759,14 @@ inject:
         flex-direction: column !important;
         justify-content: center !important;
         align-items: center !important;
-        padding: 10px 0 !important;
+        padding: var(--gap-md) 0 !important;
       }
       html[data-leftbar-state="collapsed"] .brand-image { width: 36px !important; height: 36px !important; margin: 0 auto !important; }
       html[data-leftbar-state="collapsed"] .brand-search {
         display: flex !important;
         justify-content: center !important;
         width: 100% !important;
-        margin-top: 10px !important;
+        margin-top: var(--gap-md) !important;
       }
       html[data-leftbar-state="collapsed"] .search-trigger {
         width: 40px !important;
@@ -769,7 +782,7 @@ inject:
       html[data-leftbar-state="collapsed"] .menu .ui-collection__item {
         display: flex !important;
         justify-content: center !important;
-        padding: 12px 0 !important;
+        padding: var(--gap-lg) 0 !important;
         width: 100% !important;
         border-radius: var(--radius-md) !important;
       }
@@ -794,7 +807,7 @@ inject:
         background: var(--card-bg) !important;
         border: var(--border-w) solid var(--card-border) !important;
         border-radius: var(--card-radius) !important;
-        padding: 28px 32px !important;
+        padding: var(--gap-28) var(--gap-32) !important;
         box-shadow: var(--card-shadow) !important;
         transition: all var(--dur-base) ease !important;
         text-decoration: none !important;
@@ -814,7 +827,7 @@ inject:
         font-size: var(--fs-22) !important;
         font-weight: var(--fw-semibold) !important;
         color: var(--text-primary) !important;
-        margin-bottom: 12px !important;
+        margin-bottom: var(--gap-lg) !important;
         line-height: var(--lh-title) !important;
         text-shadow: var(--ts-title) !important;
       }
@@ -823,7 +836,7 @@ inject:
         font-size: var(--fs-15) !important;
         color: var(--text-primary) !important;
         line-height: var(--lh-copy) !important;
-        margin-bottom: 16px !important;
+        margin-bottom: var(--gap-xl) !important;
         display: -webkit-box !important;
         -webkit-line-clamp: 2 !important;
         line-clamp: 2 !important;
@@ -856,7 +869,7 @@ inject:
 
       .listing-nav {
         width: 100% !important;
-        margin-bottom: 24px !important;
+        margin-bottom: var(--gap-2xl) !important;
         padding: 0 !important;
       }
       .listing-nav, .listing-nav__surface, .listing-nav__viewport {
@@ -870,7 +883,7 @@ inject:
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
-        padding: 6px 18px !important;
+        padding: var(--gap-xs) var(--gap-18) !important;
         border-radius: var(--radius-pill) !important;
         background-color: transparent !important;
         color: var(--text-secondary) !important;
@@ -898,26 +911,26 @@ inject:
         background: var(--card-bg) !important;
         border: var(--border-w) solid var(--card-border) !important;
         border-radius: var(--card-radius) !important;
-        padding: 24px !important;
-        margin-bottom: 24px !important;
+        padding: var(--gap-2xl) !important;
+        margin-bottom: var(--gap-2xl) !important;
         box-shadow: var(--shadow-soft) !important;
       }
       .archive-header {
         color: var(--text-primary) !important;
         font-size: var(--fs-22) !important;
         font-weight: var(--fw-semibold) !important;
-        margin-bottom: 16px !important;
+        margin-bottom: var(--gap-xl) !important;
         text-shadow: var(--ts-title) !important;
         border-bottom: var(--border-w) solid var(--white-10) !important;
-        padding-bottom: 12px !important;
+        padding-bottom: var(--gap-lg) !important;
       }
       .archive-list a.post {
         display: flex !important;
         align-items: center !important;
         background: transparent !important;
         border: none !important;
-        padding: 10px 12px !important;
-        margin-bottom: 4px !important;
+        padding: var(--gap-md) var(--gap-lg) !important;
+        margin-bottom: var(--gap-4) !important;
         border-radius: var(--radius-sm) !important;
         text-decoration: none !important;
         transition: background var(--dur-fast) !important;
@@ -971,7 +984,7 @@ inject:
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        padding: 20px 40px 120px 20px !important; 
+        padding: var(--gap-20) var(--gap-40) var(--gap-120) var(--gap-20) !important; 
         box-sizing: border-box !important;
         width: 100% !important;
         overflow-y: auto !important;
@@ -984,7 +997,7 @@ inject:
         box-shadow: var(--card-shadow) !important;
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
-        padding: 20px 16px !important;
+        padding: var(--gap-20) var(--gap-xl) !important;
         box-sizing: border-box !important;
         color: var(--text-primary);
         width: 100% !important;
@@ -1000,7 +1013,7 @@ inject:
       .cal-header {
         display: flex !important;
         justify-content: center !important;
-        margin-bottom: 12px !important;
+        margin-bottom: var(--gap-lg) !important;
         font-weight: var(--fw-semibold) !important;
         font-size: var(--fs-16) !important;
         color: var(--text-primary) !important;
@@ -1016,7 +1029,7 @@ inject:
       .custom-cal-th {
         font-size: var(--fs-13) !important;
         color: var(--text-faint) !important;
-        padding-bottom: 4px !important;
+        padding-bottom: var(--gap-4) !important;
         font-weight: var(--fw-regular) !important;
       }
       .custom-cal-cell {
@@ -1037,7 +1050,7 @@ inject:
       .custom-cal-lunar {
         font-size: var(--fs-10) !important;
         color: var(--text-faint) !important;
-        margin-top: 2px !important;
+        margin-top: var(--gap-2) !important;
         white-space: nowrap !important;
       }
       .custom-cal-today {
@@ -1059,12 +1072,12 @@ inject:
       .card-divider {
         height: 1px !important;
         background: var(--white-10) !important;
-        margin: 16px 0 !important;
+        margin: var(--gap-xl) 0 !important;
       }
 
       .huangli-date {
         text-align: center !important;
-        margin-bottom: 12px !important;
+        margin-bottom: var(--gap-lg) !important;
         font-size: var(--fs-15) !important;
         font-weight: var(--fw-semibold) !important;
         color: var(--text-primary) !important;
@@ -1075,11 +1088,11 @@ inject:
         align-items: center !important;
         justify-content: center !important;
         gap: var(--gap-md) !important;
-        margin-bottom: 8px !important;
+        margin-bottom: var(--gap-sm) !important;
       }
-      .huangli-row.ji-row { margin-bottom: 16px !important; }
+      .huangli-row.ji-row { margin-bottom: var(--gap-xl) !important; }
       .huangli-tag {
-        padding: 2px 8px !important;
+        padding: var(--gap-2) var(--gap-sm) !important;
         border-radius: var(--radius-xs) !important;
         font-size: var(--fs-12) !important;
         font-weight: var(--fw-semibold) !important;
@@ -1093,13 +1106,13 @@ inject:
       }
       .holiday-section {
         border-top: var(--border-w) dashed var(--white-10) !important;
-        padding-top: 12px !important;
+        padding-top: var(--gap-lg) !important;
         text-align: center !important;
       }
       .holiday-label {
         font-size: var(--fs-13) !important;
         color: var(--text-muted) !important;
-        margin-bottom: 6px !important;
+        margin-bottom: var(--gap-xs) !important;
       }
       .holiday-label .holiday-name { color: var(--accent) !important; }
       .holiday-countdown {
@@ -1116,7 +1129,7 @@ inject:
       .history-title {
         font-size: var(--fs-14) !important;
         font-weight: var(--fw-semibold) !important;
-        margin-bottom: 12px !important;
+        margin-bottom: var(--gap-lg) !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -1130,13 +1143,13 @@ inject:
         overflow-y: auto !important;
       }
       .history-item {
-        margin-bottom: 10px !important;
+        margin-bottom: var(--gap-md) !important;
         border-bottom: var(--border-w) dashed var(--white-10) !important;
-        padding-bottom: 10px !important;
+        padding-bottom: var(--gap-md) !important;
       }
       .history-year {
         color: var(--accent) !important;
-        margin-right: 6px !important;
+        margin-right: var(--gap-xs) !important;
         font-weight: var(--fw-semibold) !important;
       }
       .history-content {
@@ -1144,9 +1157,9 @@ inject:
         font-size: var(--fs-13) !important;
       }
       .quote-item {
-        margin-bottom: 10px !important;
+        margin-bottom: var(--gap-md) !important;
         border-bottom: var(--border-w) dashed var(--white-10) !important;
-        padding-bottom: 10px !important;
+        padding-bottom: var(--gap-md) !important;
         line-height: var(--lh-copy) !important;
         font-size: var(--fs-14) !important;
       }
@@ -1220,7 +1233,7 @@ inject:
         display: flex;
         align-items: center;
         gap: var(--gap-xl);
-        padding: 14px 18px;
+        padding: var(--gap-14) var(--gap-18);
         border-radius: var(--radius-lg);
         background: var(--mini-bg);
         border: var(--border-w) solid var(--white-18);

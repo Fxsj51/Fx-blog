@@ -290,7 +290,7 @@ LCP / CLS：**尚未测量**。要复测需要：`npm run server` 起本地服�
 
 1. **恢复回归脚本**到 `tools/verify/`（见 §11），至少覆盖 §7.4 三条硬性条件。
 2. ~~**断点常量集中**~~ ✅ 已完成：CSS 媒体查询只能写字面量，不再试图变量化；改为 `scripts/breakpoints.js` 构建期校验（注入 CSS / 音乐页 / JS 常量 / `patches/` 四方一致，不一致即构建失败），两处 CSS 源头已加「与补丁同源」注释。1600/1599/420/600 属音乐页布局断点，不参与该校验。
-3. ~~**间距阶梯收口**~~（进行中）：注入样式里的 padding/margin 裸值等值收敛到 `--gap-*`（详见本轮报告）。
+3. ~~**间距阶梯收口**~~ ✅ 已完成：注入 `<style>` 里 43 条 padding/margin 声明按**等值替换**改用 `--gap-*`（涉及 18 个值）。原有 6/8/10/12/16/24 复用 `--gap-xs/sm/md/lg/xl/2xl`；无对应档位的 2/4/14/18/20/28/30/32/40/80/120/160 按像素值新建 `--gap-2/4/14/18/20/28/30/32/40/80/120/160`（值等于原裸值，未调任何数）。刻意排除、保持原样：`margin: 0 auto`、`margin-top: auto`、`margin-top: -3px`（负值），以及音乐页 `source/music/index.md` 自带 `<style>`（不在「注入样式」范围）。0 值不建 `--gap-0`，仍写 `0`。
 4. **深浅色切换**：当前 `appearance.color_scheme: auto` 跟随系统，没有手动切换入口；如需手动切换要处理 `localStorage`、`color-scheme` 与背景图/卡片半透明底的对比度。
 5. **giscus 评论**：尚未接入；接入需要仓库 ID 与 category ID（在 giscus.app 生成），并注意 SPA 换页后评论 iframe 的重建（`stellar:navigation-complete` 里处理）。
 6. 删掉残留 `--rightbar-w`（§8-4）；补 `favicon.ico`（§8-3）。（`_multiconfig.yml` 已删、CI Node 已升 22，均已在第二批完成。）
