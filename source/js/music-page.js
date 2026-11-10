@@ -5,6 +5,20 @@
   // 播放能力全部来自 SitePlayer（全站唯一 <audio>），本文件只负责音乐页视图与歌词。
   var boundList = null;
   var cleanup = null;
+  // 拖动状态挂在模块级：document 上的监听只注册一次（SPA 怎么换节点都不用重绑）
+  var dragHandlers = null;
+  var globalDragBound = false;
+
+  function bindGlobalDrag() {
+    if (globalDragBound) return;
+    globalDragBound = true;
+    document.addEventListener('pointermove', function (e) { if (dragHandlers) dragHandlers.move(e); }, true);
+    document.addEventListener('pointerup', function (e) { if (dragHandlers) dragHandlers.up(e); }, true);
+    document.addEventListener('pointercancel', function (e) { if (dragHandlers) dragHandlers.cancel(e); }, true);
+    // 窗口失焦 / 页面隐藏时 pointerup 可能永远不来，兜底复位，避免 dragging 卡死
+    window.addEventListener('blur', function () { if (dragHandlers) dragHandlers.abort(); });
+    document.addEventListener('visibilitychange', function () { if (document.hidden && dragHandlers) dragHandlers.abort(); });
+  }
 
   function initMusicPage() {
     var list = document.getElementById('music-list');
@@ -52,6 +66,9 @@
     var ICON_PAUSE = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
     var audioEl = player.ensure();
     var dragging = false;
+    var dragPointerId = -1;
+    var dragRect = null;      // pointerdown 时快照一次，整段拖动都用它，避免布局变化导致 rect 漂移
+    var pendingRatio = null;  // duration 还没就绪时暂存的目标比例，元数据到了再落点
 
     function clock(sec) {
       if (!isFinite(sec) || sec < 0) sec = 0;
@@ -99,51 +116,57 @@
       }
     }
 
-    function ratioAt(e) {
-      var r = seekEl.getBoundingClientRect();
-      if (!r.width) return 0;
-      return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    // 比例一律按「按下时快照的轨道 rect」算：不用 e.offsetX / e.layerX（指针被捕获后它们相对
+    // 的是 thumb 而不是轨道，会永远接近 0），也不用 e.target 的 rect（target 往往是 thumb 子节点）
+    function ratioOf(clientX) {
+      if (!dragRect || !dragRect.width) return 0;
+      return Math.min(1, Math.max(0, (clientX - dragRect.left) / dragRect.width));
     }
 
-    function seekToRatio(ratio) {
+    function applyRatio(ratio) {
       var st = player.state();
       var dur = st.duration || 0;
-      if (dur <= 0) return;
       paintProgress(ratio);
-      if (curEl) curEl.textContent = clock(ratio * dur);
-      if (seekEl) seekEl.setAttribute('aria-valuetext', clock(ratio * dur) + ' / ' + clock(dur));
-      player.seek(ratio * dur); // seek 会派发 time 事件，歌词随之高亮
+      if (dur > 0) {
+        pendingRatio = null;
+        if (curEl) curEl.textContent = clock(ratio * dur);
+        if (seekEl) seekEl.setAttribute('aria-valuetext', clock(ratio * dur) + ' / ' + clock(dur));
+        player.seek(ratio * dur); // seek 会派发 time 事件，歌词随之高亮
+        return;
+      }
+      // preload="none" 时首帧没有 duration：不能静默吞掉这次拖动（表现为「一拖就回 0」）。
+      // 先记住目标比例并触发加载，loadedmetadata 到达后再落点。
+      pendingRatio = ratio;
+      if (audioEl && audioEl.readyState === 0) {
+        try { audioEl.load(); } catch (err) {}
+      }
+    }
+
+    function endDrag(clientX, apply) {
+      if (!dragging) return;
+      if (apply && clientX != null) applyRatio(ratioOf(clientX)); // pointercancel 的坐标不可信
+      var pid = dragPointerId;
+      dragging = false;
+      dragPointerId = -1;
+      dragRect = null;
+      if (seekEl) {
+        seekEl.classList.remove('is-dragging');
+        try { if (pid >= 0 && seekEl.hasPointerCapture && seekEl.hasPointerCapture(pid)) seekEl.releasePointerCapture(pid); } catch (err) {}
+      }
+      syncProgress(player.state());
     }
 
     if (seekEl) {
       seekEl.addEventListener('pointerdown', function (e) {
-        if (e.button !== 0) return;
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (dragging) endDrag(null, false); // 上一次抬手丢了，也不能让新的一次拖不动
         dragging = true;
+        dragPointerId = e.pointerId;
+        dragRect = seekEl.getBoundingClientRect(); // 快照轨道容器（不是 thumb）
         seekEl.classList.add('is-dragging');
         try { seekEl.setPointerCapture(e.pointerId); } catch (err) {}
-        e.preventDefault();
-        seekToRatio(ratioAt(e));
-      });
-      seekEl.addEventListener('pointermove', function (e) {
-        if (!dragging) return;
-        e.preventDefault();
-        seekToRatio(ratioAt(e));
-      });
-      var endDrag = function (e, apply) {
-        if (!dragging) return;
-        if (apply) seekToRatio(ratioAt(e)); // 只认正常抬手：pointercancel 的坐标不可信
-        dragging = false;
-        seekEl.classList.remove('is-dragging');
-        try { seekEl.releasePointerCapture(e.pointerId); } catch (err) {}
-        syncProgress(player.state());
-      };
-      seekEl.addEventListener('pointerup', function (e) { endDrag(e, true); });
-      seekEl.addEventListener('pointercancel', function (e) { endDrag(e, false); });
-      seekEl.addEventListener('lostpointercapture', function () {
-        if (!dragging) return;
-        dragging = false;
-        seekEl.classList.remove('is-dragging');
-        syncProgress(player.state());
+        if (e.cancelable) e.preventDefault();
+        applyRatio(ratioOf(e.clientX));
       });
       seekEl.addEventListener('keydown', function (e) {
         var st = player.state();
@@ -155,6 +178,33 @@
         else if (e.key === 'End') { player.seek(st.duration); e.preventDefault(); }
       });
     }
+
+    // 拖动跟随与抬手统一走 document 级监听（捕获阶段）：指针捕获丢失、拖到条外、
+    // 甚至在别的元素上松手，都能收到 pointerup，不会让 dragging 卡在 true
+    bindGlobalDrag();
+    dragHandlers = {
+      move: function (e) {
+        if (!dragging || e.pointerId !== dragPointerId) return;
+        if (e.cancelable) e.preventDefault();
+        applyRatio(ratioOf(e.clientX));
+      },
+      up: function (e) {
+        if (!dragging || e.pointerId !== dragPointerId) return;
+        endDrag(e.clientX, true);
+      },
+      cancel: function (e) {
+        if (!dragging || e.pointerId !== dragPointerId) return;
+        endDrag(null, false);
+      },
+      abort: function () { endDrag(null, false); }
+    };
+
+    // duration 到达后补上拖动期间暂存的目标位置
+    function onLoadedMeta() {
+      if (dragging || pendingRatio == null) return;
+      applyRatio(pendingRatio);
+    }
+    if (audioEl) audioEl.addEventListener('loadedmetadata', onLoadedMeta);
 
     if (toggleBtn) toggleBtn.addEventListener('click', function () { player.toggle(); });
 
@@ -353,6 +403,8 @@
     cleanup = function () {
       unsubscribe();
       lyricToken++;
+      dragHandlers = null;
+      if (audioEl) audioEl.removeEventListener('loadedmetadata', onLoadedMeta);
     };
 
     render(player.state());
