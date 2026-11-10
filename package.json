@@ -8,6 +8,7 @@
     "build:raw": "hexo generate",
     "clean": "hexo clean",
     "measure": "node tools/measure.js",
+    "lyrics": "node tools/lyrics.js",
     "server": "hexo server",
     "postinstall": "patch-package"
   },

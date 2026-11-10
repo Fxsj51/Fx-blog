@@ -284,6 +284,28 @@ LCP / CLS：**尚未测量**。要复测需要：`npm run server` 起本地服�
   - **路径规则**（只在 `scripts/playlist.js` 的 `resolveUrl` 实现一次）：`http://` / `https://` 开头的绝对地址原样输出，不拼站点根，可直接指向对象存储/CDN；其他写法按站内相对路径补 Hexo root（子路径部署为 `/Fx-blog/`）。两种写法可在同一份歌单混用，`cover` / `lrc` 同理。
 - 歌单被两处消费：音乐页 `{% playlist %}`（`scripts/playlist.js`）与构建期注入的 `<script id="site-playlist" type="application/json">`（`site-player.js` 读取）。**不要在别处再写第二份曲目数组。**
 
+### 12.1 给本地曲目补歌词（`npm run lyrics`）
+
+`tools/lyrics.js`：读 `source/_data/playlist.yml`，逐首去 [lrclib](https://lrclib.net) 搜同步歌词，成功的写成 `.lrc` 并在该条 `audio` 下方补 `lrc:` 字段；失败/待定的条目原样不动。
+
+```bash
+npm run lyrics                        # 只处理还没有 lrc 的本地曲目（可重复运行）
+npm run lyrics -- --dry-run           # 只打印匹配结果，不写任何文件
+npm run lyrics -- --force             # 已有 lrc 的也重抓（会覆盖同名 .lrc）
+npm run lyrics -- --pick "曲名=记录id"  # 多条候选待定时，手工指定用哪一条
+```
+
+匹配规则：
+1. `GET https://lrclib.net/api/search?track_name=..&artist_name=..`，标题/歌手取 `playlist.yml`；
+2. 只要 `syncedLyrics` 非空的候选（`plainLyrics` 没时间轴，不可用），排除 `instrumental: true`；候选歌手必须与 `playlist.yml` 的 `artist` 一致（归一化后比较，全不匹配才退回全部）；
+3. 真实时长由脚本自己解析 MP3 帧头算出（ID3 里没有 `TLEN`，不引入任何新依赖），与候选 `duration` 差值 **≤ 3 秒**才算合格；
+4. 多条时用专辑名收敛：先要求与音频 ID3 的 `TALB` **完全一致**，再退化为「去括号后缀 + 抹平标点」后一致；
+5. 仍多条时只采用「时长差最小且唯一」的一条；若并列则判定**待定**，不写 lrc，把候选（id、时长、专辑、差值）打出来等人拍板（用 `--pick` 定）。
+
+写文件规则：路径固定 `source/music/lrc/<与音频同名的 basename>.lrc`（不重命名、不改扩展名），UTF-8 无 BOM，保留 lrclib 原始 `[mm:ss.xx]` 时间轴，不重排、不补空行。请求间隔 1.2s，遇到 429 退避重试三次，网络失败只跳过当前曲目。
+
+当前 5 首本地曲目的结果：Billie Jean / Come And Get Your Love / That's The Way It Is / 海阔天空 已写入；14.3 Billion Years 是纯音乐（候选全部 `instrumental` 或无同步歌词），保持「纯音乐，请欣赏」占位。以后加歌只需把 mp3 放进 `source/music/audio/`、在 `playlist.yml` 登记 `audio` 和 `license`，然后跑 `npm run lyrics`；待定的用 `--pick`。
+
 ---
 
 ## 13. 待办（按优先级）

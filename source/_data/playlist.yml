@@ -30,19 +30,23 @@
 - title: Billie Jean
   artist: Michael Jackson
   audio: "music/audio/michael+jackson-billie+jean.mp3"
+  lrc: "music/lrc/michael+jackson-billie+jean.lrc"
   license: 本地曲目
 
 - title: Come And Get Your Love
   artist: Redbone
   audio: "music/audio/redbone-come+and+get+your+love.mp3"
+  lrc: "music/lrc/redbone-come+and+get+your+love.lrc"
   license: 本地曲目
 
 - title: That's The Way It Is
   artist: Daniel Lanois
   audio: "music/audio/That's The Way It Is (Single Version)-Daniel Lanois.mp3"
+  lrc: "music/lrc/That's The Way It Is (Single Version)-Daniel Lanois.lrc"
   license: 本地曲目
 
 - title: 海阔天空
   artist: BEYOND
   audio: "music/audio/海阔天空-BEYOND(2).mp3"
+  lrc: "music/lrc/海阔天空-BEYOND(2).lrc"
   license: 本地曲目
