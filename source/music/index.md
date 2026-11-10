@@ -111,6 +111,9 @@ rightbar:
 .lyric-line.is-current { opacity: 1; font-weight: 600; border-left-color: #1DB954; background: rgba(29, 185, 84, 0.1); }
 @keyframes music-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 /*
+ * 断点同源：本文件的 1180/1181 与 _config.stellar.yml 注入 CSS 的抽屉断点一致，
+ * 改动需同步；scripts/breakpoints.js 在构建期校验，不一致会构建失败。
+ *
  * 三段式布局（断点均在视口宽度上判定）：
  * ≤1180      堆叠：当前曲卡片 / 歌单 / 歌词（.music-page 基础 flex 列）。
  * 1181–1599  当前曲卡片通栏，下方「歌单 + 300px 歌词栏」两列。

@@ -107,6 +107,7 @@ npm run server       # hexo server，本地预览（注意：本地没有 _confi
 ### 4.4 右栏逻辑 —— `_config.stellar.yml` body_end 内联脚本 + 注入样式
 
 - 断点唯一来源（JS）：`RIGHTBAR_DRAWER_MAX = 1180` → **>1180 常驻，≤1180 抽屉**。
+- CSS 媒体查询只能写字面量，无法与 JS 共享常量；因此由 `scripts/breakpoints.js`（`before_generate`）在构建期校验：注入 CSS 的 1180/1181、900/901 字面量、`source/music/index.md` 的 1180/1181、JS 常量、`patches/` 里的 `rightbarDrawerQuery`/`leftbar*Query` 四方必须一致，否则构建失败。改断点时只改数值、校验会指出其余未同步处。
 - CSS 侧同样口径：`@media (max-width: 1180px) { :root { --rightbar-col-w: 0px } }`，抽屉是 `position:fixed` 右侧滑入（宽 `min(380px, 85vw)`），开关按钮 `#custom-rightbar-toggle`（`body.show-rightbar` 时右移、箭头翻转）。
 - 显示控制同时切 class 与属性：`show-rightbar` + `inert` / `aria-hidden`。
 - 无右栏页面（music/about/categories/tags/archives）：`#rightbar-region` 不存在 → 隐藏开关按钮、不渲染第三列（`--rightbar-col-w: 0` 由 `data-regions` 控制）。
@@ -288,8 +289,8 @@ LCP / CLS：**尚未测量**。要复测需要：`npm run server` 起本地服�
 ## 13. 待办（按优先级）
 
 1. **恢复回归脚本**到 `tools/verify/`（见 §11），至少覆盖 §7.4 三条硬性条件。
-2. **断点常量集中**：把 1180 / 900 / 1600 / 901 收拢为单一来源（CSS 变量无法进媒体查询，需构建期注入或统一的 `@custom-media` 方案），并让 JS 常量与 `patches/` 引用同一处说明。
-3. **间距阶梯收口**：目前 `--gap-*` / `--fs-*` 等档位已建立，但仍有大量 `padding` / `margin` 直接写像素值，需纳入阶梯（纯样式整理，必须逐页对照 §7.4 回归）。
+2. ~~**断点常量集中**~~ ✅ 已完成：CSS 媒体查询只能写字面量，不再试图变量化；改为 `scripts/breakpoints.js` 构建期校验（注入 CSS / 音乐页 / JS 常量 / `patches/` 四方一致，不一致即构建失败），两处 CSS 源头已加「与补丁同源」注释。1600/1599/420/600 属音乐页布局断点，不参与该校验。
+3. ~~**间距阶梯收口**~~（进行中）：注入样式里的 padding/margin 裸值等值收敛到 `--gap-*`（详见本轮报告）。
 4. **深浅色切换**：当前 `appearance.color_scheme: auto` 跟随系统，没有手动切换入口；如需手动切换要处理 `localStorage`、`color-scheme` 与背景图/卡片半透明底的对比度。
 5. **giscus 评论**：尚未接入；接入需要仓库 ID 与 category ID（在 giscus.app 生成），并注意 SPA 换页后评论 iframe 的重建（`stellar:navigation-complete` 里处理）。
 6. 删掉残留 `--rightbar-w`（§8-4）；补 `favicon.ico`（§8-3）。（`_multiconfig.yml` 已删、CI Node 已升 22，均已在第二批完成。）

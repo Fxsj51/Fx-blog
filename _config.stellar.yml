@@ -150,6 +150,12 @@ inject:
     </script>
 
     <style>
+      /*
+       * 断点同源：本段媒体查询里的 1180/1181、900/901 与 body_end 注入脚本的
+       * RIGHTBAR_DRAWER_MAX、patches/hexo-theme-stellar+2.0.0.patch 里的
+       * rightbarDrawerQuery / leftbar*Query 必须一致。
+       * 改动任意一处都会让 scripts/breakpoints.js 的构建期校验失败。
+       */
       :root {
         --leftbar-w: 340px;
         --leftbar-w-collapsed: 64px;
