@@ -357,7 +357,12 @@
     try { url = new URL(link.href); } catch (err) { return; }
     if (url.origin !== location.origin) return;
     if (url.pathname.indexOf(siteRoot) !== 0) return;
-    if (pageKey(url) === currentPath) return; // 同页仅锚点/查询串变化，交给浏览器
+    if (pageKey(url) === currentPath) {
+      // 同一页面：锚点变化交给浏览器（会改 hash 并滚动）；
+      // 但完全相同的地址必须拦下——否则浏览器按默认行为重新请求，整页重载。
+      if (url.hash === location.hash) e.preventDefault();
+      return;
+    }
 
     e.preventDefault();
     navigate(url, { pop: false });
