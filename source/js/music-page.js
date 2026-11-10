@@ -8,6 +8,9 @@
   // 拖动状态挂在模块级：document 上的监听只注册一次（SPA 怎么换节点都不用重绑）
   var dragHandlers = null;
   var globalDragBound = false;
+  // 抬手时释放指针捕获后，浏览器还会补一个 click，落点可能是拖动终点下方的别的元素
+  // （比如曲目列表）——那会让拖动看起来「一松手就跳回 0 并换了首歌」。拖完这一下必须吃掉。
+  var suppressClick = false;
 
   function bindGlobalDrag() {
     if (globalDragBound) return;
@@ -15,6 +18,13 @@
     document.addEventListener('pointermove', function (e) { if (dragHandlers) dragHandlers.move(e); }, true);
     document.addEventListener('pointerup', function (e) { if (dragHandlers) dragHandlers.up(e); }, true);
     document.addEventListener('pointercancel', function (e) { if (dragHandlers) dragHandlers.cancel(e); }, true);
+    document.addEventListener('pointerdown', function () { suppressClick = false; }, true);
+    document.addEventListener('click', function (e) {
+      if (!suppressClick) return;
+      suppressClick = false;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
     // 窗口失焦 / 页面隐藏时 pointerup 可能永远不来，兜底复位，避免 dragging 卡死
     window.addEventListener('blur', function () { if (dragHandlers) dragHandlers.abort(); });
     document.addEventListener('visibilitychange', function () { if (document.hidden && dragHandlers) dragHandlers.abort(); });
@@ -153,6 +163,9 @@
         seekEl.classList.remove('is-dragging');
         try { if (pid >= 0 && seekEl.hasPointerCapture && seekEl.hasPointerCapture(pid)) seekEl.releasePointerCapture(pid); } catch (err) {}
       }
+      // 拖动结束后浏览器补发的 click 要吃掉。这里不能用定时器复位——click 是 pointerup 之后
+      // 单独的 task，0ms 定时器可能先跑，标志就白设了；改由下一次 pointerdown 复位。
+      suppressClick = true;
       syncProgress(player.state());
     }
 
