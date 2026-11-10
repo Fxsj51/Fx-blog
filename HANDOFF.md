@@ -350,3 +350,8 @@ LCP / CLS：**尚未测量**。要复测需要：`npm run server` 起本地服�
 
 **待用户补充**（[_config.stellar.yml](_config.stellar.yml) `footer` 段已留注释占位）：备案号/公安备案、社交账号、联系方式；补好后追加到 `footer.content`。
 
+### 补记（2026-11-10）：忽略 IDE 目录
+
+`.gitignore` 在 `.vs/` 旁新增 `.idea/`。此前误入库的 4 个 IDEA 配置文件（`.idea/.gitignore`、`Fx-blog.iml`、`jsonSchemas.xml`、`modules.xml`）已从索引移除、本地文件保留；这些文件只服务 IDE 工程索引（模块定义、JSON Schema 映射），Hexo 构建与 CI 都不读取。
+
+

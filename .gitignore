@@ -2,6 +2,7 @@
 Thumbs.db
 db.json
 .vs/
+.idea/
 *.log
 node_modules/
 public/
