@@ -14,6 +14,7 @@ rightbar:
       <p class="music-now__label">当前曲目</p>
       <h2 class="music-now__title" id="music-now-title">未选择曲目</h2>
       <p class="music-now__artist" id="music-now-artist">点击下方任意曲目开始播放</p>
+      <p class="music-now__credits" id="music-now-credits" hidden></p>
       <audio id="music-audio" preload="none"></audio>
       <div class="music-ctl">
         <button type="button" class="music-ctl__icon" id="music-toggle" aria-label="播放">
@@ -76,6 +77,9 @@ rightbar:
 .music-now__label { margin: 0 0 4px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; opacity: .6; }
 .music-now__title { margin: 0; font-size: 20px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .music-now__artist { margin: 4px 0 12px; font-size: 13px; opacity: .7; }
+/* 曲目信息：只在有值时出现；一行读完为主，窄屏自然换行，不做成表单块 */
+.music-now__credits { margin: -4px 0 12px; font-size: 12px; line-height: 1.7; opacity: .62; word-break: break-word; }
+.music-now__credits[hidden] { display: none; }
 /* 音频节点只作为播放引擎，界面由下方自绘控件承载（原生控件时间轴过细、无法拖动） */
 #music-audio { display: none; }
 .music-ctl { display: flex; align-items: center; gap: 10px; max-width: 460px; }
@@ -150,6 +154,11 @@ rightbar:
 .lyric-line { margin: 0; padding: 7px 0 7px 12px; border-left: 2px solid transparent; border-radius: 0 8px 8px 0; font-size: 14px; line-height: 1.55; opacity: .42; transition: opacity .25s, background .25s, border-color .25s; }
 .lyric-line.is-past { opacity: .26; }
 .lyric-line.is-current { opacity: 1; font-weight: 600; border-left-color: #1DB954; background: rgba(29, 185, 84, 0.1); }
+/* 原文一行、译文紧跟其下：译文更小更淡，且不单独计时（跟随原文行高亮/滚动） */
+.lyric-line__src { display: block; }
+.lyric-line__zh { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; line-height: 1.5; opacity: .62; }
+.lyric-line.is-current .lyric-line__zh { opacity: .82; }
+.lyric-line.is-past .lyric-line__zh { opacity: .5; }
 @keyframes music-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 /*
  * 断点同源：本文件的 1180/1181 与 _config.stellar.yml 注入 CSS 的抽屉断点一致，

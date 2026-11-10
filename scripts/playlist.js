@@ -36,10 +36,12 @@ function renderItem(track, index, root) {
   const cover = resolveUrl(track.cover || 'images/CP-disc.webp', root);
   // 可选：同目录歌词文件（.lrc），缺省时音乐页显示「纯音乐」占位
   const lrc = track.lrc ? resolveUrl(track.lrc, root) : '';
+  // 可选：与 lrc 逐行对齐的中文译文
+  const zhlrc = track.zhlrc ? resolveUrl(track.zhlrc, root) : '';
   const meta = [track.artist, track.source, track.year].filter(Boolean).join(' · ');
   const duration = track.duration || '—';
   return [
-    `<li class="music-item" role="button" tabindex="0" data-src="${escapeAttr(audio)}" data-title="${escapeAttr(track.title)}" data-artist="${escapeAttr(track.artist || '')}" data-cover="${escapeAttr(cover)}" data-lrc="${escapeAttr(lrc)}">`,
+    `<li class="music-item" role="button" tabindex="0" data-src="${escapeAttr(audio)}" data-title="${escapeAttr(track.title)}" data-artist="${escapeAttr(track.artist || '')}" data-cover="${escapeAttr(cover)}" data-lrc="${escapeAttr(lrc)}" data-zhlrc="${escapeAttr(zhlrc)}">`,
     `  <img class="music-item__cover" src="${escapeAttr(cover)}" alt="" width="40" height="40" loading="lazy">`,
     `  <span class="music-item__no">${String(index + 1).padStart(2, '0')}</span>`,
     '  <span class="music-item__text">',
@@ -80,6 +82,14 @@ hexo.extend.filter.register('after_render:html', function(str, data) {
     url: resolveUrl(track.audio, root),
     cover: resolveUrl(track.cover || 'images/CP-disc.webp', root),
     lrc: track.lrc ? resolveUrl(track.lrc, root) : '',
+    zhlrc: track.zhlrc ? resolveUrl(track.zhlrc, root) : '',
+    // 只输出实际有值的字段，视图层据此整项隐藏（不会出现「作曲：—」）
+    credits: track.credits && typeof track.credits === 'object' ? {
+      lyricist: track.credits.lyricist || '',
+      composer: track.credits.composer || '',
+      arranger: track.credits.arranger || '',
+      album: track.credits.album || ''
+    } : null,
     duration: track.duration || ''
   }));
   const json = JSON.stringify(payload).replace(/</g, '\\u003c');

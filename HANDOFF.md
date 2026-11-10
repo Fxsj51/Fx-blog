@@ -276,10 +276,12 @@ LCP / CLS：**尚未测量**。要复测需要：`npm run server` 起本地服�
 
 ## 12. 本地音频与歌单登记方式
 
-- **歌单唯一数据源**：`source/_data/playlist.yml`（数组，字段见文件头注释：`title/artist/source/year/cover/audio/lrc/duration/license/attribution/sourceUrl`）。
+- **歌单唯一数据源**：`source/_data/playlist.yml`（数组，字段见文件头注释：`title/artist/source/year/cover/audio/lrc/zhlrc/credits/duration/license/attribution/sourceUrl`）。
   - 远程曲目：`audio` 写完整 `https://` 地址；
   - 本地曲目：`audio` 写 `music/audio/xxx.mp3`，并把文件放到 `source/music/audio/`（该目录有 `README.txt` 说明）；
   - 歌词：`lrc` 写 `music/lrc/xxx.lrc`，文件放 `source/music/lrc/`；缺省或文件无时间轴时，音乐页显示「纯音乐，请欣赏」。
+  - 译文：`zhlrc` 写 `music/lrc/xxx.zh.lrc`（与 `lrc` 同名加 `.zh`），缺省时只显示原文，不显示空的第二行。
+  - 曲目信息：`credits` 为嵌套映射（`lyricist` / `composer` / `arranger` / `album`），缺哪项就整项不显示；整块都没值时信息区不渲染。
   - 公开曲目必须填 `license` 与 `attribution`；本地曲目 `license: 本地曲目` 即可。
   - **路径规则**（只在 `scripts/playlist.js` 的 `resolveUrl` 实现一次）：`http://` / `https://` 开头的绝对地址原样输出，不拼站点根，可直接指向对象存储/CDN；其他写法按站内相对路径补 Hexo root（子路径部署为 `/Fx-blog/`）。两种写法可在同一份歌单混用，`cover` / `lrc` 同理。
 - 歌单被两处消费：音乐页 `{% playlist %}`（`scripts/playlist.js`）与构建期注入的 `<script id="site-playlist" type="application/json">`（`site-player.js` 读取）。**不要在别处再写第二份曲目数组。**
@@ -305,6 +307,50 @@ npm run lyrics -- --pick "曲名=记录id"  # 多条候选待定时，手工指�
 写文件规则：路径固定 `source/music/lrc/<与音频同名的 basename>.lrc`（不重命名、不改扩展名），UTF-8 无 BOM，保留 lrclib 原始 `[mm:ss.xx]` 时间轴，不重排、不补空行。请求间隔 1.2s，遇到 429 退避重试三次，网络失败只跳过当前曲目。
 
 当前 5 首本地曲目的结果：Billie Jean / Come And Get Your Love / That's The Way It Is / 海阔天空 已写入；14.3 Billion Years 是纯音乐（候选全部 `instrumental` 或无同步歌词），保持「纯音乐，请欣赏」占位。以后加歌只需把 mp3 放进 `source/music/audio/`、在 `playlist.yml` 登记 `audio` 和 `license`，然后跑 `npm run lyrics`；待定的用 `--pick`。
+
+### 12.2 双语歌词与曲目信息（`npm run lyrics:zh`）
+
+`tools/lyrics-zh.js`：构建期一次性抓取，运行时（浏览器）**不向第三方发任何请求**。读 `playlist.yml`，给已有原词的曲目补中文译文与曲目信息。
+
+```bash
+npm run lyrics:zh                      # 已处理过的跳过（credits 在即视为已处理）
+npm run lyrics:zh -- --dry-run         # 只打印匹配/对齐结果，不写文件
+npm run lyrics:zh -- --force           # 重抓并覆盖 .zh.lrc 与 credits
+npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指定
+```
+
+数据来源（网易云音乐非官方公开接口，无文档、可能 403 / 返回空 / 改结构；脚本每次请求都带 `Referer: https://music.163.com/` 与桌面 UA，判空判错，请求间隔 1.2s，429 退避三次，失败只跳过当前曲目）：
+
+| 用途 | 接口 |
+| --- | --- |
+| 搜索候选 | `GET https://music.163.com/api/search/get/web?s=<曲名 歌手>&type=1&limit=20` |
+| 原词 + 译文 | `GET https://music.163.com/api/song/lyric?id=<id>&lv=1&tv=1` → `lrc.lyric` / `tlyric.lyric` |
+| 专辑名 | `GET https://music.163.com/api/song/detail?ids=[<id>]` → `album.name` |
+
+匹配规则（沿用 12.1，另加歌名收敛）：
+1. 候选 `duration` 与脚本解析 MP3 帧头算出的真实时长差值 **≤ 3 秒**；
+2. 歌手归一化后一致；歌名归一化后一致（避免 `(Live)/(Extended)` 混入）；
+3. 多条时用 ID3 `TALB` 与候选专辑收敛：先全等、再去括号后缀/抹标点后相等；
+4. 仍多条只接受「时长差最小且唯一」的一条，否则列候选跳过、不猜（可用 `--pick` 定）。
+5. 实测 `Come And Get Your Love` 有 5 个 ±3s 候选（同为 Guardians of the Galaxy 两种发行版），按「歌名全等 + 专辑同族 + 时长差 0.05s 最小」收敛到 id=28864241；两个 GotG 发行的译文内容一致。
+
+译文落盘规则（关键）：
+- 网易云 `lrc`/`tlyric` 用的是它自己的时间轴，和本仓库既有 `.lrc`（lrclib 抄本）**不一定对齐**（Redbone 的开头副歌就有 ~9s 偏差）。因此不能直接抄 `tlyric` 时间戳，而是把两份原词按**顺序做单调对齐**（动态规划、按词重合度打分、允许插空），再把译文挂到本仓库原词同一句的**原时间戳**上；
+- 译文中找不到对应原句的行直接丢弃（宁缺勿错），不机翻、不凑数；原词行没译文时页面只显示原文，不留空行；
+- 存成与音频同名的独立文件 `source/music/lrc/<basename>.zh.lrc`（UTF-8，含时间戳），`playlist.yml` 该条补 `zhlrc:`；
+- 曲目信息从网易云 `lrc` 头部的「作词 : / 作曲 : / 编曲 :」信息行抽取（这些行会从歌词里剔除，不会当歌词显示），专辑取详情接口；空字段不写，一项都没有时整块不写。
+
+当前结果：
+
+| 曲目 | 原文行 | 译文行（挂到原文） | 作词 | 作曲 | 编曲 | 专辑 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Billie Jean | 64 | 38 | Michael Jackson | Michael Jackson | Michael Jackson | Thriller |
+| Come And Get Your Love | 71 | 50 | Lolly Vegas | Lolly Vegas | — | Guardians of the Galaxy (Deluxe) |
+| That's The Way It Is | 32 | 29 | — | Daniel Lanois/Rocco Deluca | — | The Music of Red Dead Redemption 2 (Original Soundtrack) |
+| 14.3 Billion Years | 0（纯音乐） | 0 | — | — | — | Outer Wilds - Original Soundtrack |
+| 海阔天空 | 32 | 0（中文原创，不做译文） | 黄家驹 | 黄家驹 | Beyond/梁邦彦 | 海阔天空 |
+
+降级规则：网易云整个接口不可用时，脚本不写任何文件、保留既有数据；某首歌请求失败/候选待定时只跳过该首；页面侧 `zhlrc` 拉取失败或为空时静默降级为只显示原文（`console.warn` 一次，不弹错误），`credits` 为空则整块 `hidden`。
 
 ---
 
@@ -377,5 +423,27 @@ npm run lyrics -- --pick "曲名=记录id"  # 多条候选待定时，手工指�
 ### 补记（2026-11-10）：忽略 IDE 目录
 
 `.gitignore` 在 `.vs/` 旁新增 `.idea/`。此前误入库的 4 个 IDEA 配置文件（`.idea/.gitignore`、`Fx-blog.iml`、`jsonSchemas.xml`、`modules.xml`）已从索引移除、本地文件保留；这些文件只服务 IDE 工程索引（模块定义、JSON Schema 映射），Hexo 构建与 CI 都不读取。
+
+### 第四批（2026-11-10）：双语歌词与曲目信息
+
+| 改动 | 之前 | 之后 |
+| --- | --- | --- |
+| 双语歌词 | 4 首英文歌只有原词 | 原词一行 + 译文紧跟其下（译文更小更淡），高亮/滚动只跟原词时间；译文缺失的曲目/行只显示原文 |
+| 译文来源 | 无 | 构建期 `npm run lyrics:zh` 从网易云抓 `tlyric`，按「顺序单调对齐」挂到本仓库原词时间戳，落盘 `<basename>.zh.lrc` |
+| 曲目信息 | 只有歌手名 | 标题下增加一行 `作词/作曲/编曲/专辑`（有则显示、无则整项隐藏、全无则整块不存在） |
+| 翻译数据出口 | — | `playlist.yml` 新增 `zhlrc`、`credits`；`scripts/playlist.js` 同时注入 `data-zhlrc` 与 `#site-playlist` JSON |
+| 隐藏 audio（SPA 新建节点） | `site-player.js` 会 `setAttribute('controls','')` | 不再挂原生控件，SPA 换页后 `#music-audio` 同样无 `controls` |
+
+**验证结论**（有头 Edge + CDP，`static-server.js` 服务 `public`，两种入口 × 同一份构建，共 **111/111 PASS**）：
+
+- 产物前提：`.music-ctl` 存在且可拖面积宽 218px（1440）/ 260px（375）；`#music-audio` 无 `controls`；`music-page.js` 含 `pointerdown`（不是旧产物）。
+- 行数（DOM 实测 = 文件实测）：Billie Jean 64/64 行、译文 38；Come And Get Your Love 71/71、译文 50；That's The Way It Is 32/32、译文 29；14.3 Billion Years 0 行（`无 LRC`）；海阔天空 32 行、0 译文。所有译文都挂在 `.lyric-line` 内部（`strayZh=0`），不存在空第二行。
+- seek 高亮（Billie Jean，时长 293.83s）：20% 目标 58.77s → 实际 59.23s 播放中 / 58.77s 暂停，当前行 index=6；60% 176.30 → 176.75 / 176.30，index=36；90% 264.44 → 264.89 / 264.44，index=57 / 56（按实际 `currentTime` 判断，均与 lrc 行一一对应）；20%/60% 当前行译文分别为「然后每个人都转头侧目，幻想自己就是那个幸运儿」「她只是宣称我就是那个人的一个女孩」，随原文行一起进入歌词视口（`scrollTop` 443 / 3199 / 4690）。
+- seek 90% 的 Billie Jean 原文行在网易云译文里没有对应句，按降级规则只显示原文；That's The Way It Is 的 20%/60% 有译文（「也难逃一劫」「人生，大概也如此吧」），90% 同样落在无译文行。
+- 曲目信息：Billie Jean / Come And Get Your Love / That's The Way It Is / 14.3 Billion Years / 海阔天空 五首都显示了实际抓到的字段；无数据时 `#music-now-credits` 保持 `hidden` 且文本为空（首屏未选曲目即为此状态）。
+- 布局：1440 与 375 下 `document.documentElement.scrollWidth == clientWidth`（1432/1432、375/375），歌词行/译文行/信息区均无横向溢出；375 下当前行原文 17px、译文 12px 且译文在原文下方另起一行（`zhTop ≥ srcBottom`）。
+- 换页：首页 → 音乐页（真实鼠标点侧栏，`window.__spaMark` 保留，未整页刷新）后五首歌词/译文全正常；音乐页 → 首页 → 音乐页，歌词仍 64 行/38 译文、进度连续（176.296s → 176.854s）、全页始终 1 个 `<audio>`。
+- JS 异常：音乐页脚本 0 异常。SPA 测试期间出现过 1 条主题右栏「农历库」异常（`Cannot set properties of null (setting 'innerHTML')` at `/`），已用旧构建（`58df337`）复现同样错误，属既有 CDN 失败竞态，与本次改动无关。
+- `npm run build` 通过，断点校验通过（1180/1181、900/901 与注入 JS、patches 一致）。
 
 

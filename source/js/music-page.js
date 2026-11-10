@@ -37,6 +37,7 @@
     var discImg = document.getElementById('music-disc-img');
     var nowTitle = document.getElementById('music-now-title');
     var nowArtist = document.getElementById('music-now-artist');
+    var creditsEl = document.getElementById('music-now-credits');
     var lyricsMeta = document.getElementById('music-lyrics-meta');
     var lyricsScroll = document.getElementById('music-lyrics-scroll');
     var seekEl = document.getElementById('music-seek');
@@ -242,6 +243,7 @@
     var lyricIndex = -1;
     var lyricToken = 0;
     var lrcCache = Object.create(null);
+    var zhCache = Object.create(null);
 
     function showLyricsMessage(text, meta) {
       lyricLines = [];
@@ -313,7 +315,9 @@
       if (idx >= 0 && nodes[idx]) scrollLyricIntoView(nodes[idx]);
     }
 
-    function renderLyrics(lines) {
+    // 译文按时间戳对齐到原词行：译文文件由 npm run lyrics:zh 生成，
+    // 每行时间戳改写为原词同一句的时间，因此这里只需按时间精确匹配，不单独计时。
+    function renderLyrics(lines, zhLines) {
       lyricLines = lines;
       lyricIndex = -1;
       lyricsScroll.innerHTML = '';
@@ -321,45 +325,98 @@
         showLyricsMessage('纯音乐，请欣赏', '无歌词');
         return;
       }
+      var zhMap = Object.create(null);
+      (zhLines || []).forEach(function (line) {
+        var key = line.time.toFixed(2);
+        if (zhMap[key] == null) zhMap[key] = line.text;
+      });
       var frag = document.createDocumentFragment();
+      var zhCount = 0;
       lines.forEach(function (line) {
         var p = document.createElement('p');
         p.className = 'lyric-line';
-        p.textContent = line.text;
+        var src = document.createElement('span');
+        src.className = 'lyric-line__src';
+        src.textContent = line.text;
+        p.appendChild(src);
+        var zh = zhMap[line.time.toFixed(2)];
+        if (zh) {
+          var sub = document.createElement('span');
+          sub.className = 'lyric-line__zh';
+          sub.textContent = zh;
+          p.appendChild(sub);
+          zhCount++;
+        }
         frag.appendChild(p);
       });
       lyricsScroll.appendChild(frag);
       lyricsScroll.scrollTop = 0;
-      lyricsMeta.textContent = 'LRC · ' + lines.length + ' 行';
+      lyricsMeta.textContent = 'LRC · ' + lines.length + ' 行' + (zhCount ? ' · 双语' : '');
     }
 
-    function loadLyrics(url) {
+    function fetchLrc(url) {
+      return fetch(url, { credentials: 'same-origin' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.text();
+        })
+        .then(parseLrc);
+    }
+
+    function loadLyrics(url, zhUrl) {
       var token = ++lyricToken;
       if (!url) {
         showLyricsMessage('纯音乐，请欣赏', '无 LRC');
         return;
       }
       if (lrcCache[url]) {
-        renderLyrics(lrcCache[url]);
+        renderLyrics(lrcCache[url], (zhUrl && zhCache[zhUrl]) || null);
         return;
       }
       showLyricsMessage('歌词加载中…', '加载中');
-      fetch(url, { credentials: 'same-origin' })
-        .then(function (res) {
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          return res.text();
-        })
-        .then(function (text) {
+      var zhTask = (!zhUrl || zhCache[zhUrl])
+        ? Promise.resolve((zhUrl && zhCache[zhUrl]) || null)
+        : fetchLrc(zhUrl).catch(function (err) {
+          // 译文缺失不是错误：降级为只显示原文
+          console.warn('[music] 译文加载失败，仅显示原文', zhUrl, err);
+          return null;
+        });
+      Promise.all([fetchLrc(url), zhTask])
+        .then(function (pair) {
           if (token !== lyricToken) return;
-          var lines = parseLrc(text);
+          var lines = pair[0];
+          var zh = pair[1];
           lrcCache[url] = lines;
-          renderLyrics(lines);
+          if (zhUrl && zh) zhCache[zhUrl] = zh;
+          renderLyrics(lines, zh);
         })
         .catch(function (err) {
           if (token !== lyricToken) return;
           console.warn('[music] 歌词加载失败', url, err);
           showLyricsMessage('歌词加载失败', '加载失败');
         });
+    }
+
+    // ---------------- 曲目信息（作词/作曲/编曲/专辑，有则显示） ----------------
+    var CREDIT_LABELS = [
+      ['lyricist', '作词'],
+      ['composer', '作曲'],
+      ['arranger', '编曲'],
+      ['album', '专辑']
+    ];
+
+    function renderCredits(track) {
+      if (!creditsEl) return;
+      var source = (track && track.credits) || null;
+      var parts = [];
+      if (source) {
+        CREDIT_LABELS.forEach(function (pair) {
+          var value = String(source[pair[0]] || '').trim();
+          if (value) parts.push(pair[1] + '：' + value);
+        });
+      }
+      creditsEl.textContent = parts.join(' · ');
+      creditsEl.hidden = parts.length === 0;
     }
 
     function setActiveDuration(text) {
@@ -379,11 +436,13 @@
         nowTitle.textContent = '未选择曲目';
         nowArtist.textContent = '点击下方任意曲目开始播放';
       }
+      renderCredits(track);
       if (disc) disc.classList.toggle('is-playing', st.playing);
       if (idx !== currentIndex) {
         currentIndex = idx;
         var lrc = (track && track.lrc) || (items[idx] && items[idx].getAttribute('data-lrc')) || '';
-        if (idx >= 0) loadLyrics(lrc);
+        var zhlrc = (track && track.zhlrc) || (items[idx] && items[idx].getAttribute('data-zhlrc')) || '';
+        if (idx >= 0) loadLyrics(lrc, zhlrc);
         else showLyricsMessage('点击曲目开始播放，歌词会跟随高亮。', '—');
       }
       if (st.duration > 0) setActiveDuration(formatTime(st.duration));

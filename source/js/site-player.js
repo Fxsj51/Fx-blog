@@ -90,7 +90,7 @@
     if (!audio) {
       audio = document.createElement('audio');
       audio.id = 'music-audio';
-      audio.setAttribute('controls', '');
+      // 不挂原生 controls：播放界面由音乐页的自绘控件承载（SPA 下由这里新建节点时同样保持无 controls）
       host().appendChild(audio);
     }
     audio.preload = 'none';

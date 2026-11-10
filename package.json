@@ -9,6 +9,7 @@
     "clean": "hexo clean",
     "measure": "node tools/measure.js",
     "lyrics": "node tools/lyrics.js",
+    "lyrics:zh": "node tools/lyrics-zh.js",
     "server": "hexo server",
     "postinstall": "patch-package"
   },

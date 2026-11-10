@@ -10,6 +10,11 @@
 #               （音频文件放在 source/music/audio/，见该目录 README）
 #   lrc         可选，本地歌词文件路径，如 music/lrc/my-song.lrc；
 #               缺省或文件为空/无时间轴时，音乐页歌词栏显示「纯音乐，请欣赏」
+#   zhlrc       可选，中文译文文件路径，如 music/lrc/my-song.zh.lrc；
+#               时间戳与 lrc 逐行对齐（由 npm run lyrics:zh 生成），缺省只显示原文
+#   credits     可选，曲目信息（作词/作曲/编曲/专辑），有则显示、无则整项隐藏；
+#               由 npm run lyrics:zh 抓取，也可手工填：
+#                 lyricist: 作词   composer: 作曲   arranger: 编曲   album: 专辑
 #   duration    可选，mm:ss，仅用于列表展示，播放后以实际元数据为准
 #   license     授权类型，公开曲目必填
 #   attribution 署名要求，公开曲目必填；无需署名时写「无需署名」
@@ -26,27 +31,49 @@
   artist: Andrew Prahlow
   audio: "music/audio/14.3+Billion+Years-Andrew+Prahlow.mp3"
   license: 本地曲目
+  credits:
+    album: "Outer Wilds - Original Soundtrack"
 
 - title: Billie Jean
   artist: Michael Jackson
   audio: "music/audio/michael+jackson-billie+jean.mp3"
   lrc: "music/lrc/michael+jackson-billie+jean.lrc"
   license: 本地曲目
+  zhlrc: "music/lrc/michael+jackson-billie+jean.zh.lrc"
+  credits:
+    lyricist: "Michael Jackson"
+    composer: "Michael Jackson"
+    arranger: "Michael Jackson"
+    album: "Thriller"
 
 - title: Come And Get Your Love
   artist: Redbone
   audio: "music/audio/redbone-come+and+get+your+love.mp3"
   lrc: "music/lrc/redbone-come+and+get+your+love.lrc"
   license: 本地曲目
+  zhlrc: "music/lrc/redbone-come+and+get+your+love.zh.lrc"
+  credits:
+    lyricist: "Lolly Vegas"
+    composer: "Lolly Vegas"
+    album: "Guardians of the Galaxy (Deluxe)"
 
 - title: That's The Way It Is
   artist: Daniel Lanois
   audio: "music/audio/That's The Way It Is (Single Version)-Daniel Lanois.mp3"
   lrc: "music/lrc/That's The Way It Is (Single Version)-Daniel Lanois.lrc"
   license: 本地曲目
+  zhlrc: "music/lrc/That's The Way It Is (Single Version)-Daniel Lanois.zh.lrc"
+  credits:
+    composer: "Daniel Lanois/Rocco Deluca"
+    album: "The Music of Red Dead Redemption 2 (Original Soundtrack)"
 
 - title: 海阔天空
   artist: BEYOND
   audio: "music/audio/海阔天空-BEYOND(2).mp3"
   lrc: "music/lrc/海阔天空-BEYOND(2).lrc"
   license: 本地曲目
+  credits:
+    lyricist: "黄家驹"
+    composer: "黄家驹"
+    arranger: "Beyond/梁邦彦"
+    album: "海阔天空"
