@@ -17,32 +17,27 @@
 #
 # 本地曲目（自己录制或已获得授权）不需要署名，license 写「本地曲目」即可。
 
-- title: Dance of the Gnomes
-  artist: Harold Dixon
-  source: Wikimedia Commons
-  year: 1927
-  audio: "https://upload.wikimedia.org/wikipedia/commons/9/97/Dance_of_the_Gnomes_by_Harold_Dixon_%281927%29.mp3"
-  duration: 2:03
-  license: Public domain
-  attribution: 无需署名
-  sourceUrl: "https://commons.wikimedia.org/wiki/File:Dance_of_the_Gnomes_by_Harold_Dixon_(1927).mp3"
+- title: 14.3 Billion Years
+  artist: Andrew Prahlow
+  audio: "music/audio/14.3+Billion+Years-Andrew+Prahlow.mp3"
+  license: 本地曲目
 
-- title: Glad Rag
-  artist: J. Bodewalt Lampe（署名 Ribe Danmark）
-  source: Wikimedia Commons
-  year: 1910
-  audio: "https://upload.wikimedia.org/wikipedia/commons/c/cd/Glad_Rag_by_Ribe_Danmark_%281910%29.mp3"
-  duration: 2:46
-  license: Public domain
-  attribution: 无需署名
-  sourceUrl: "https://commons.wikimedia.org/wiki/File:Glad_Rag_by_Ribe_Danmark_(1910).mp3"
+- title: Billie Jean
+  artist: Michael Jackson
+  audio: "music/audio/michael+jackson-billie+jean.mp3"
+  license: 本地曲目
 
-- title: On the Syncopated Road
-  artist: George Barker
-  source: Wikimedia Commons
-  year: 1900
-  audio: "https://upload.wikimedia.org/wikipedia/commons/c/c3/On_the_Syncopated_Road_%281900%29_by_George_Barker.mp3"
-  duration: 2:19
-  license: Public domain
-  attribution: 无需署名
-  sourceUrl: "https://commons.wikimedia.org/wiki/File:On_the_Syncopated_Road_(1900)_by_George_Barker.mp3"
+- title: Come And Get Your Love
+  artist: Redbone
+  audio: "music/audio/redbone-come+and+get+your+love.mp3"
+  license: 本地曲目
+
+- title: That's The Way It Is
+  artist: Daniel Lanois
+  audio: "music/audio/That's The Way It Is (Single Version)-Daniel Lanois.mp3"
+  license: 本地曲目
+
+- title: 海阔天空
+  artist: BEYOND
+  audio: "music/audio/海阔天空-BEYOND(2).mp3"
+  license: 本地曲目
