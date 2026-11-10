@@ -486,6 +486,11 @@ inject:
         max-width: 64px !important;
       }
 
+      /* 左栏菜单当前项的绿色指示点（8px 圆点）：只收掉颜色，保留占位宽度，避免换页时文字左右跳动 */
+      #leftbar-region .ui-collection__indicator {
+        background: transparent !important;
+      }
+
       #leftbar-region .site-region__surface {
         position: absolute !important;
         top: 20px !important;
