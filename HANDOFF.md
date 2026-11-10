@@ -280,6 +280,7 @@ LCP / CLS：**尚未测量**。要复测需要：`npm run server` 起本地服�
   - 本地曲目：`audio` 写 `music/audio/xxx.mp3`，并把文件放到 `source/music/audio/`（该目录有 `README.txt` 说明）；
   - 歌词：`lrc` 写 `music/lrc/xxx.lrc`，文件放 `source/music/lrc/`；缺省或文件无时间轴时，音乐页显示「纯音乐，请欣赏」。
   - 公开曲目必须填 `license` 与 `attribution`；本地曲目 `license: 本地曲目` 即可。
+  - **路径规则**（只在 `scripts/playlist.js` 的 `resolveUrl` 实现一次）：`http://` / `https://` 开头的绝对地址原样输出，不拼站点根，可直接指向对象存储/CDN；其他写法按站内相对路径补 Hexo root（子路径部署为 `/Fx-blog/`）。两种写法可在同一份歌单混用，`cover` / `lrc` 同理。
 - 歌单被两处消费：音乐页 `{% playlist %}`（`scripts/playlist.js`）与构建期注入的 `<script id="site-playlist" type="application/json">`（`site-player.js` 读取）。**不要在别处再写第二份曲目数组。**
 
 ---

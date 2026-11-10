@@ -16,6 +16,11 @@
 #   sourceUrl   可选，原页面链接
 #
 # 本地曲目（自己录制或已获得授权）不需要署名，license 写「本地曲目」即可。
+#
+# 路径规则（只在 scripts/playlist.js 的 resolveUrl 里实现一次）：
+#   - 以 http:// 或 https:// 开头的绝对地址原样输出，不拼站点根，可指向对象存储/CDN；
+#   - 其他写法按站内相对路径处理，自动补 Hexo root（子路径部署时为 /Fx-blog/）；
+#   - 同一份歌单可以混用两种写法，互不影响。
 
 - title: 14.3 Billion Years
   artist: Andrew Prahlow
