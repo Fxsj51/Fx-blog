@@ -14,7 +14,23 @@ rightbar:
       <p class="music-now__label">当前曲目</p>
       <h2 class="music-now__title" id="music-now-title">未选择曲目</h2>
       <p class="music-now__artist" id="music-now-artist">点击下方任意曲目开始播放</p>
-      <audio id="music-audio" controls preload="none"></audio>
+      <audio id="music-audio" preload="none"></audio>
+      <div class="music-ctl">
+        <button type="button" class="music-ctl__icon" id="music-toggle" aria-label="播放">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 5l12 7-12 7z"/></svg>
+        </button>
+        <span class="music-ctl__time" id="music-cur">0:00</span>
+        <div class="music-seek" id="music-seek" role="slider" tabindex="0" aria-label="播放进度"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0:00 / 0:00">
+          <div class="music-seek__track"><div class="music-seek__played" id="music-played"></div></div>
+          <span class="music-seek__thumb" id="music-thumb"></span>
+        </div>
+        <span class="music-ctl__time" id="music-dur">0:00</span>
+        <button type="button" class="music-ctl__icon" id="music-mute" aria-label="静音">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 9h3.5L12 5.5v13L7.5 15H4z"/><path fill="currentColor" d="M15.2 8.8l1.3-1.3 2.2 2.2 2.2-2.2 1.3 1.3-2.2 2.2 2.2 2.2-1.3 1.3-2.2-2.2-2.2 2.2-1.3-1.3 2.2-2.2z"/></svg>
+        </button>
+        <input type="range" class="music-ctl__vol" id="music-vol" min="0" max="100" step="1" value="100" aria-label="音量">
+      </div>
     </div>
   </div>
 
@@ -60,7 +76,32 @@ rightbar:
 .music-now__label { margin: 0 0 4px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; opacity: .6; }
 .music-now__title { margin: 0; font-size: 20px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .music-now__artist { margin: 4px 0 12px; font-size: 13px; opacity: .7; }
-#music-audio { width: 100%; max-width: 420px; height: 36px; display: block; }
+/* 音频节点只作为播放引擎，界面由下方自绘控件承载（原生控件时间轴过细、无法拖动） */
+#music-audio { display: none; }
+.music-ctl { display: flex; align-items: center; gap: 10px; max-width: 460px; }
+.music-ctl__icon {
+  flex: 0 0 auto; width: 34px; height: 34px; padding: 0;
+  display: grid; place-items: center;
+  border: 1px solid var(--music-card-border); border-radius: 50%;
+  background: rgba(127, 127, 127, .12); color: inherit; cursor: pointer;
+}
+.music-ctl__icon:hover { background: rgba(127, 127, 127, .22); }
+.music-ctl__icon:focus-visible, .music-seek:focus-visible { outline: 2px solid #1DB954; outline-offset: 2px; }
+.music-ctl__icon.is-muted { opacity: .45; }
+.music-ctl__time { flex: 0 0 auto; font-size: 12px; opacity: .7; font-variant-numeric: tabular-nums; }
+.music-seek {
+  position: relative; flex: 1 1 auto; min-width: 80px; height: 22px;
+  display: flex; align-items: center; cursor: pointer; touch-action: none;
+}
+.music-seek__track { width: 100%; height: 4px; border-radius: 2px; background: rgba(127, 127, 127, .34); }
+.music-seek__played { width: 0; height: 100%; border-radius: 2px; background: #1DB954; }
+.music-seek__thumb {
+  position: absolute; top: 50%; left: 0; width: 12px; height: 12px; margin: -6px 0 0 -6px;
+  border-radius: 50%; background: #1DB954; box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+  pointer-events: none; transition: transform .12s ease;
+}
+.music-seek.is-dragging .music-seek__thumb { transform: scale(1.2); }
+.music-ctl__vol { flex: 0 0 72px; width: 72px; accent-color: #1DB954; }
 .music-list-card { border-radius: 16px; background: var(--music-card-bg); border: 1px solid var(--music-card-border); overflow: hidden; -webkit-backdrop-filter: var(--music-card-blur); backdrop-filter: var(--music-card-blur); }
 .music-list__head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid rgba(127, 127, 127, 0.16); font-weight: 600; }
 .music-list__count { font-size: 12px; font-weight: 400; opacity: .6; }
@@ -162,7 +203,14 @@ rightbar:
   .music-now { flex-direction: column; align-items: flex-start; }
   .music-now__disc { width: 88px; height: 88px; }
   .music-now__title { font-size: 17px; }
-  #music-audio { max-width: 100%; }
+  .music-ctl { flex-wrap: wrap; gap: 8px; }
+  /* 窄屏一行放不下：按钮/时间排第一行，进度条独占第二行，保证可拖面积 */
+  #music-toggle { order: 1; }
+  #music-cur { order: 2; }
+  #music-dur { order: 3; }
+  #music-mute { order: 4; }
+  #music-seek { order: 5; flex: 1 0 100%; }
+  .music-ctl__vol { display: none; }
   .music-item { grid-template-columns: 34px 24px 1fr auto; padding: 10px 8px; }
   .music-item__cover { width: 34px; height: 34px; }
 }

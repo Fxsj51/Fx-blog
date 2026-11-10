@@ -15,6 +15,14 @@
     var nowArtist = document.getElementById('music-now-artist');
     var lyricsMeta = document.getElementById('music-lyrics-meta');
     var lyricsScroll = document.getElementById('music-lyrics-scroll');
+    var seekEl = document.getElementById('music-seek');
+    var playedEl = document.getElementById('music-played');
+    var thumbEl = document.getElementById('music-thumb');
+    var curEl = document.getElementById('music-cur');
+    var durEl = document.getElementById('music-dur');
+    var toggleBtn = document.getElementById('music-toggle');
+    var muteBtn = document.getElementById('music-mute');
+    var volEl = document.getElementById('music-vol');
 
     if (!list || !player || !lyricsScroll) {
       if (cleanup) { cleanup(); cleanup = null; }
@@ -37,6 +45,133 @@
       var m = Math.floor(sec / 60);
       var s = Math.floor(sec % 60);
       return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    // ---------------- 播放控件（自绘进度条：按下即跳、拖动跟随、松手不回弹） ----------------
+    var ICON_PLAY = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 5l12 7-12 7z"/></svg>';
+    var ICON_PAUSE = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
+    var audioEl = player.ensure();
+    var dragging = false;
+
+    function clock(sec) {
+      if (!isFinite(sec) || sec < 0) sec = 0;
+      var m = Math.floor(sec / 60);
+      var s = Math.floor(sec % 60);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function paintProgress(ratio) {
+      if (!seekEl) return;
+      var pct = Math.max(0, Math.min(1, ratio)) * 100;
+      if (playedEl) playedEl.style.width = pct + '%';
+      if (thumbEl) thumbEl.style.left = pct + '%';
+      seekEl.setAttribute('aria-valuenow', String(Math.round(pct)));
+    }
+
+    function paintTimes(st) {
+      var dur = st.duration || 0;
+      if (curEl) curEl.textContent = clock(st.currentTime);
+      if (durEl) durEl.textContent = clock(dur);
+      if (seekEl) seekEl.setAttribute('aria-valuetext', clock(st.currentTime) + ' / ' + clock(dur));
+    }
+
+    // 拖动期间由指针位置驱动，不被 timeupdate 回写覆盖（否则会出现「松手弹回」）
+    function syncProgress(st) {
+      if (dragging) return;
+      var dur = st.duration || 0;
+      paintProgress(dur > 0 ? st.currentTime / dur : 0);
+      paintTimes(st);
+    }
+
+    function syncToggle(st) {
+      if (!toggleBtn) return;
+      toggleBtn.innerHTML = st.playing ? ICON_PAUSE : ICON_PLAY;
+      toggleBtn.setAttribute('aria-label', st.playing ? '暂停' : '播放');
+    }
+
+    function syncMute() {
+      if (!muteBtn || !audioEl) return;
+      var muted = audioEl.muted || audioEl.volume === 0;
+      muteBtn.classList.toggle('is-muted', muted);
+      muteBtn.setAttribute('aria-label', muted ? '取消静音' : '静音');
+      if (volEl && document.activeElement !== volEl) {
+        volEl.value = String(Math.round(audioEl.volume * 100));
+      }
+    }
+
+    function ratioAt(e) {
+      var r = seekEl.getBoundingClientRect();
+      if (!r.width) return 0;
+      return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    }
+
+    function seekToRatio(ratio) {
+      var st = player.state();
+      var dur = st.duration || 0;
+      if (dur <= 0) return;
+      paintProgress(ratio);
+      if (curEl) curEl.textContent = clock(ratio * dur);
+      if (seekEl) seekEl.setAttribute('aria-valuetext', clock(ratio * dur) + ' / ' + clock(dur));
+      player.seek(ratio * dur); // seek 会派发 time 事件，歌词随之高亮
+    }
+
+    if (seekEl) {
+      seekEl.addEventListener('pointerdown', function (e) {
+        if (e.button !== 0) return;
+        dragging = true;
+        seekEl.classList.add('is-dragging');
+        try { seekEl.setPointerCapture(e.pointerId); } catch (err) {}
+        e.preventDefault();
+        seekToRatio(ratioAt(e));
+      });
+      seekEl.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        e.preventDefault();
+        seekToRatio(ratioAt(e));
+      });
+      var endDrag = function (e, apply) {
+        if (!dragging) return;
+        if (apply) seekToRatio(ratioAt(e)); // 只认正常抬手：pointercancel 的坐标不可信
+        dragging = false;
+        seekEl.classList.remove('is-dragging');
+        try { seekEl.releasePointerCapture(e.pointerId); } catch (err) {}
+        syncProgress(player.state());
+      };
+      seekEl.addEventListener('pointerup', function (e) { endDrag(e, true); });
+      seekEl.addEventListener('pointercancel', function (e) { endDrag(e, false); });
+      seekEl.addEventListener('lostpointercapture', function () {
+        if (!dragging) return;
+        dragging = false;
+        seekEl.classList.remove('is-dragging');
+        syncProgress(player.state());
+      });
+      seekEl.addEventListener('keydown', function (e) {
+        var st = player.state();
+        if (!(st.duration > 0)) return;
+        var step = e.shiftKey ? 15 : 5;
+        if (e.key === 'ArrowRight') { player.seek(st.currentTime + step); e.preventDefault(); }
+        else if (e.key === 'ArrowLeft') { player.seek(st.currentTime - step); e.preventDefault(); }
+        else if (e.key === 'Home') { player.seek(0); e.preventDefault(); }
+        else if (e.key === 'End') { player.seek(st.duration); e.preventDefault(); }
+      });
+    }
+
+    if (toggleBtn) toggleBtn.addEventListener('click', function () { player.toggle(); });
+
+    if (muteBtn) {
+      muteBtn.addEventListener('click', function () {
+        audioEl.muted = !audioEl.muted;
+        syncMute();
+      });
+    }
+
+    if (volEl) {
+      volEl.addEventListener('input', function () {
+        var v = Number(volEl.value) / 100;
+        audioEl.volume = isFinite(v) ? Math.min(1, Math.max(0, v)) : 1;
+        if (audioEl.volume > 0 && audioEl.muted) audioEl.muted = false;
+        syncMute();
+      });
     }
 
     // ---------------- 歌词（可选本地 .lrc） ----------------
@@ -190,6 +325,9 @@
       }
       if (st.duration > 0) setActiveDuration(formatTime(st.duration));
       updateLyric(st.currentTime);
+      syncToggle(st);
+      syncProgress(st);
+      syncMute();
     }
 
     items.forEach(function (item, i) {
@@ -203,9 +341,10 @@
     });
 
     var unsubscribe = player.subscribe(function (st, type) {
-      if (type === 'time') { updateLyric(st.currentTime); return; }
+      if (type === 'time') { updateLyric(st.currentTime); syncProgress(st); return; }
       if (type === 'meta') {
         if (st.duration > 0) setActiveDuration(formatTime(st.duration));
+        syncProgress(st);
         return;
       }
       render(st);
