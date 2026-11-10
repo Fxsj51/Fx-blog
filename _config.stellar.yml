@@ -392,19 +392,9 @@ inject:
         --gap-lg: 12px;
         --gap-xl: 16px;
         --gap-2xl: 24px;
-        /* 以下为原裸值等值补档：值等于替换前，未做任何调整；命名按像素值，避免给一次性尺寸编语义名 */
+        /* 小间距补档：2px / 4px 高频且有实际含义，保留令牌；其余一次性尺寸仍写裸值 */
         --gap-2: 2px;
         --gap-4: 4px;
-        --gap-14: 14px;
-        --gap-18: 18px;
-        --gap-20: 20px;
-        --gap-28: 28px;
-        --gap-30: 30px;
-        --gap-32: 32px;
-        --gap-40: 40px;
-        --gap-80: 80px;
-        --gap-120: 120px;
-        --gap-160: 160px;
 
         /* ===== 背景模糊档位 ===== */
         --blur-bar: blur(20px) saturate(150%);
@@ -512,7 +502,7 @@ inject:
         border: var(--border-w) solid var(--surface-border) !important;
         border-radius: var(--radius-xl) !important;
         box-shadow: var(--shadow-surface) !important;
-        padding: var(--gap-30) var(--gap-2xl) !important;
+        padding: 30px var(--gap-2xl) !important;
         display: flex !important;
         flex-direction: column !important;
         transition: left var(--dur-slow) var(--ease), padding var(--dur-slow) var(--ease) !important;
@@ -521,7 +511,7 @@ inject:
 
       html[data-leftbar-state="collapsed"] .site-shell:not([data-drawer='leftbar']) #leftbar-region .site-region__surface {
         left: 8px !important;
-        padding: var(--gap-20) var(--gap-xs) !important;
+        padding: 20px var(--gap-xs) !important;
         align-items: center !important;
       }
 
@@ -552,7 +542,7 @@ inject:
         width: 100% !important;
         max-width: 100% !important; 
         margin: 0 !important;
-        padding: var(--gap-20) var(--gap-40) var(--gap-160) var(--gap-40) !important; 
+        padding: 20px 40px 160px 40px !important; 
         box-sizing: border-box !important; 
         overflow: hidden !important;
         transition: none !important;
@@ -614,7 +604,7 @@ inject:
         }
 
         aside#rightbar-region .widget-stack--rightbar {
-          padding: 0 0 var(--gap-80) 0 !important; 
+          padding: 0 0 80px 0 !important; 
           height: 100% !important;
           overflow-y: auto !important;
         }
@@ -632,7 +622,7 @@ inject:
           border-radius: var(--radius-xl) !important;
           border: var(--border-w) solid var(--white-10) !important;
           box-shadow: var(--shadow-drawer) !important;
-          padding: var(--gap-2xl) var(--gap-20) !important;
+          padding: var(--gap-2xl) 20px !important;
           margin: 0 !important;
           width: 100% !important;
         }
@@ -695,7 +685,7 @@ inject:
         }
 
         main.site-main {
-          padding: var(--gap-80) var(--gap-20) var(--gap-160) var(--gap-20) !important;
+          padding: 80px 20px 160px 20px !important;
           min-height: 100vh !important;
           max-width: 1000px !important;
           margin: 0 auto !important;
@@ -736,7 +726,7 @@ inject:
         flex-direction: row !important;
         align-items: center !important;
         gap: var(--gap-xl) !important;
-        padding: var(--gap-md) 0 var(--gap-30) 0 !important;
+        padding: var(--gap-md) 0 30px 0 !important;
         white-space: nowrap !important;
       }
       .brand-image { width: 48px !important; height: 48px !important; margin: 0 !important; flex-shrink: 0 !important; }
@@ -807,7 +797,7 @@ inject:
         background: var(--card-bg) !important;
         border: var(--border-w) solid var(--card-border) !important;
         border-radius: var(--card-radius) !important;
-        padding: var(--gap-28) var(--gap-32) !important;
+        padding: 28px 32px !important;
         box-shadow: var(--card-shadow) !important;
         transition: all var(--dur-base) ease !important;
         text-decoration: none !important;
@@ -883,7 +873,7 @@ inject:
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
-        padding: var(--gap-xs) var(--gap-18) !important;
+        padding: var(--gap-xs) 18px !important;
         border-radius: var(--radius-pill) !important;
         background-color: transparent !important;
         color: var(--text-secondary) !important;
@@ -984,7 +974,7 @@ inject:
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        padding: var(--gap-20) var(--gap-40) var(--gap-120) var(--gap-20) !important; 
+        padding: 20px 40px 120px 20px !important; 
         box-sizing: border-box !important;
         width: 100% !important;
         overflow-y: auto !important;
@@ -997,7 +987,7 @@ inject:
         box-shadow: var(--card-shadow) !important;
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
-        padding: var(--gap-20) var(--gap-xl) !important;
+        padding: 20px var(--gap-xl) !important;
         box-sizing: border-box !important;
         color: var(--text-primary);
         width: 100% !important;
@@ -1233,7 +1223,7 @@ inject:
         display: flex;
         align-items: center;
         gap: var(--gap-xl);
-        padding: var(--gap-14) var(--gap-18);
+        padding: 14px 18px;
         border-radius: var(--radius-lg);
         background: var(--mini-bg);
         border: var(--border-w) solid var(--white-18);
