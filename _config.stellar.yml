@@ -55,6 +55,32 @@ profiles:
 rightbar:
   enabled: false
 
+article:
+  # 文章页头部（banner 第一行右侧）显示字数与预计阅读时间
+  show_reading_time: true
+  # 文末相关文章数量上限；0 表示关闭。无相关文章时主题整块不渲染
+  related_posts_limit: 3
+
+# 主内容区页脚：分栏导航 + 版权说明
+footer:
+  sitemap:
+    - title: 导航
+      items:
+        - '[首页](/)'
+        - '[分类](/categories/)'
+        - '[标签](/tags/)'
+        - '[归档](/archives/)'
+    - title: 本站
+      items:
+        - '[关于](/about/)'
+        - '[音乐](/music/)'
+        - '[设置](/settings/)'
+  # 待用户补充（补好后再追加到 content 对应位置）：
+  #   - 备案号 ICP / 公安备案（如有）
+  #   - 社交账号或联系方式（如有）
+  content: |
+    © 2026 Fx的博客 · 由 [Hexo](https://hexo.io/) 与 [Stellar 2.0.0](https://github.com/xaoxuu/hexo-theme-stellar) 构建。
+
 appearance:
   preset: flat
   color_scheme: auto

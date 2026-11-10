@@ -331,3 +331,22 @@ LCP / CLS：**尚未测量**。要复测需要：`npm run server` 起本地服�
 | 遗留文件 | 根目录 `_multiconfig.yml`（无引用，被忽略） | 已删除，`.gitignore` 对应行一并移除 |
 
 未涉及任何布局、样式与前端脚本运行逻辑；构建产物除 `public/` 时间戳外无行为变化。
+
+### 第三批（2026-11-10）
+
+| 改动 | 之前 | 之后 |
+| --- | --- | --- |
+| 文章阅读时长 | `article.show_reading_time` 未配置（默认关闭） | `true`，文章页 banner 第一行右侧显示「78 字 · 预计阅读 1 分钟」 |
+| 文末相关文章 | `article.related_posts_limit` 未配置（等同 0） | `3`，按共享标签数排序取前 3；无相关文章时主题整块不渲染（HTML 无 `#related-posts`） |
+| 站点页脚 | 主题默认单行版权（作者占位显示 `John Doe`） | `footer.sitemap` 两栏导航（导航 / 本站）+ `footer.content` 站点名、年份、Hexo 与 Stellar 署名 |
+| 相关文章数据源 | 主题要求安装 `hexo-related-popular-posts` | 该插件 5.0.1 依赖 Node 22 已移除的 `SlowBuffer`，在 CI 无法加载；改由 [`scripts/related-posts.js`](scripts/related-posts.js) 注册同名 `popular_posts_json` helper（按共享标签排序，只输出标题与链接） |
+
+**验证结论**
+
+- 布局回归：1440 下 `scrollWidth == clientWidth == 1432`，主栏 340–1052（712px）、右栏 1052–1432（380px）；1920 下 `1912 == 1912`，主栏 436–1436（1000px）、右栏 1436–1816（380px），与第二批基准一致。
+- SPA 换页（重点）：首页 → 文章，`window` 标记保留（无整页刷新），`.reading` 与相关文章块正常；文章 → 首页，页脚始终 1 个、sitemap 始终 1 组，不重复也不消失。
+- 无数据降级：仅 `hello-world` 一篇时文章页无 `#related-posts`，无空壳区块与多余留白；临时造两篇共享标签文章验证有数据表现后已删除并 `clean` 重建。
+- 体积：桌面首屏 gzip 642.2KB / 原始 1005.9KB；移动 241.2KB / 605.0KB；整页原始 1159.6KB（较第二批整页 +0.3KB，主要来自页脚 HTML）。
+
+**待用户补充**（[_config.stellar.yml](_config.stellar.yml) `footer` 段已留注释占位）：备案号/公安备案、社交账号、联系方式；补好后追加到 `footer.content`。
+
