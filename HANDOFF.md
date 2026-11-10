@@ -1,7 +1,7 @@
 # HANDOFF — Fx-blog 交接文档
 
 > 本文件面向"下一轮接手的人/AI"。目标是：读完之后能在**不改坏站点**的前提下继续开发。
-> 最后更新：2026-11-10（第一批：版本控制 + 交接文档 + 现场清理）
+> 最后更新：2026-11-10（第二批：构建收敛 + 体积测量口径 + 清理，见 §15）
 > 状态标记：**【实测】**= 本轮实际跑过/量过；**【推算】**= 按 CSS 公式推导，未在浏览器里量；**【未覆盖】**= 从没跑过。
 
 ---
@@ -18,7 +18,7 @@
 | 补丁 | `patch-package 8.0.1`，`postinstall` 自动重放 `patches/` |
 | 压缩 | `clean-css` / `html-minifier-terser` / `terser`（devDependencies，由 `tools/minify.js` 调用） |
 | 本机 Node | v26.13.0 / npm 11.20.0【实测】 |
-| CI Node | actions/setup-node 固定 **node-version: 20**（注意：主题 2.0.0 的 `engines` 写的是 `>=22`，见 §8-6） |
+| CI Node | actions/setup-node 固定 **node-version: 22**（与主题 2.0.0 的 `engines: >=22` 一致） |
 | 文章量 | **全站只有 1 篇** `source/_posts/hello-world.md`【实测】 |
 
 目录要点：
@@ -27,10 +27,11 @@
 D:\Fx-blog
 ├─ _config.yml             # Hexo 主配置（theme: stellar，无 deploy 段）
 ├─ _config.stellar.yml     # 主题配置 + 自研注入（约 1640 行，含绝大部分自研 CSS/JS）
-├─ _multiconfig.yml        # ⚠ 遗留文件，已被 .gitignore 忽略，无任何引用（见 §8-8）
 ├─ patches/                # ⚠ 必须被 git 跟踪
 ├─ scripts/                # Hexo 构建期脚本（site-root / playlist / menu-pages）
+├─ tools/build.js          # 唯一构建入口（clean → generate → minify，本地与 CI 同源）
 ├─ tools/minify.js         # 构建后压缩 + 子路径修正
+├─ tools/measure.js        # 首屏体积测量（固定口径，见 §9）
 ├─ source/js/              # spa.js / site-player.js / music-page.js（自研前端）
 ├─ source/music/           # 音乐页（index.md 内含音乐页专属样式）、audio/、lrc/
 ├─ source/_data/           # playlist.yml（歌单唯一数据源）、icons.yml
@@ -46,25 +47,27 @@ D:\Fx-blog
   1. `push` 到 `main`/`master`，或 `workflow_dispatch` 手动触发；
   2. `npm ci`（触发 `postinstall` → `patch-package` 重放主题补丁，**这一步失败会导致断点回退到 768px 且构建不报错**）；
   3. 依据 `GITHUB_REPOSITORY` 生成 `_config.pages.yml`（只含 `url:` 与 `root:`，**不入库**，已在 `.gitignore`）；
-  4. `npx hexo generate --config _config.yml,_config.pages.yml && node tools/minify.js`；
+  4. `npm run build:pages`（= `node tools/build.js --pages`，与本地 `npm run build` 同一段流程，只多传一份 `_config.pages.yml`）；
   5. `upload-pages-artifact` 上传 `public/` → `deploy-pages`。
-- **CI 的构建命令和本地 `npm run build` 不是同一条**：CI 多传一个 `_config.pages.yml` 来注入 `root: /Fx-blog/`，然后再跑同一个 `minify.js`。
+- **本地与 CI 同源**：两边都只走 `tools/build.js`（`clean → generate → minify`）。差别仅在于 `--pages` 会把 `_config.pages.yml` 追加进 `--config`，用来把 `root` 覆盖成 `/Fx-blog/`。不要在 workflow 里另写 `hexo generate && node tools/minify.js`。
 
 ---
 
 ## 3. 构建与验证命令（最容易踩的坑）
 
 ```powershell
-npm run build      # ✅ 唯一正确的构建：hexo generate && node tools/minify.js
-npm run build:raw  # ⚠ 只跑 hexo generate，不压缩（体积大一个量级），别用来验证产物
-npm run clean      # hexo clean，删 public/ 与 db.json
-npm run server     # hexo server，本地预览（注意：本地没有 _config.pages.yml 时 root 是 /，不是 /Fx-blog/）
+npm run build        # ✅ 唯一正确的构建：hexo clean → hexo generate → node tools/minify.js
+npm run build:pages  # CI 用：同上，但带 _config.pages.yml 覆盖 root=/Fx-blog/（文件须先存在）
+npm run build:raw    # ⚠ 只跑 hexo generate，不压缩也不清理，别用来验证产物
+npm run clean        # hexo clean，删 public/ 与 db.json（已包含在 build 里）
+npm run measure      # 首屏体积测量，固定口径见 §9（需先 build）
+npm run server       # hexo server，本地预览（注意：本地没有 _config.pages.yml 时 root 是 /，不是 /Fx-blog/）
 ```
 
 - **不要用 `npx hexo generate` 代替 `npm run build`。** 它不压缩，且 `tools/minify.js` 里那套"给 `src="/images/..."` 补子路径前缀"的逻辑不会执行，产物既大又可能在子路径下 404。
-- 成功判据【实测】：末尾输出 `Done: css N, html N, js N, saved NNNKB`，且退出码 0。
-- ⚠ `npm run build` **不含 `hexo clean`**：不清 `public/` 时会重复压缩已压缩的文件，`saved` 数值失真（本轮实测：首次 279KB，未清理再跑一次只剩 21KB）。要拿可比的体积/基线数字，必须 `npm run clean; npm run build`。
-- 失败判据：`tools/minify.js` 会把压缩失败的文件逐条打成 `FAILED <file>`，最后 `process.exitCode = 1`，构建必须视为失败——不要因为"页面能打开"就放过。
+- 成功判据【实测】：末尾输出 `Done: css N, html N, js N, saved NNNKB` 与 `[build] 完成`，且退出码 0。
+- `npm run build` **每次都先 `hexo clean`**，所以连续两次构建的产物应完全一致（本轮实测：两次均为 118 个文件 / 8,651,865 字节 / 清单 SHA-256 相同）。若两次数字不同，说明有构建产物流入了版本库或 `clean` 被绕过。
+- 失败判据：`tools/build.js` 任一步失败即中止；`tools/minify.js` 会把压缩失败的文件逐条打成 `FAILED <file>`，最后 `process.exitCode = 1`，构建必须视为失败——不要因为"页面能打开"就放过。
 - 验证产物的最低要求：
   - `public/index.html` 与 `public/music/index.html` 的 `<script>`/`<link>` 路径以 `/Fx-blog/` 开头（在有 `_config.pages.yml` 的构建下）；
   - 页面 `document.documentElement.scrollWidth === documentElement.clientWidth`（无横向滚动条）；
@@ -150,14 +153,18 @@ npm run server     # hexo server，本地预览（注意：本地没有 _config.
 | `scripts/site-root.js` | `__SITE_ROOT__` / `__SITE_BRAND_NAME__` / `__SITE_BRAND_TAGLINE__` 占位符替换（`after_render:html` 与 `:css`）；同时给 `tools/minify.js` 复用 `normalizeRoot`/`replaceSiteRoot`。 |
 | `scripts/playlist.js` | `{% playlist %}` 标签（音乐页卡片）；并把歌单注入为 `<script id="site-playlist" type="application/json">` 到 `</head>` 前，供播放器读同一份数据。 |
 | `scripts/menu-pages.js` | 生成 `/categories/`、`/tags/` 索引页；无数据时退化为 `page` 布局显示空状态。 |
+| `tools/build.js` | 唯一构建入口：`hexo clean` → `hexo generate` → `tools/minify.js`；`--pages` 时把 `_config.pages.yml` 追加进 `--config`。本地与 CI 共用。 |
 | `tools/minify.js` | 构建后压缩 CSS/HTML/JS；按 `_config.pages.yml` 的 `root` 修正 `src="/images/..."` 与 `url(/images/...)`；单文件失败即让构建失败。 |
+| `tools/measure.js` | 首屏体积测量（口径见 §9），输出 HTML/CSS/JS 的原始与 gzip、首屏图片、移动/桌面两档首屏合计、整页原始字节。 |
 | `source/js/spa.js` | 无刷新换页（§4.1）。 |
 | `source/js/site-player.js` | 全站单例播放器（§4.2）。 |
 | `source/js/music-page.js` | 音乐页视图 + LRC 歌词解析/滚动高亮；无歌词显示「纯音乐，请欣赏」。 |
 | `source/music/index.md` | 音乐页内容 + **音乐页专属样式**（含三段式布局与右缘对齐公式）。 |
 | `source/_data/playlist.yml` | 歌单**唯一**数据源。 |
 
-> 已删除的旧文件：`source/js/aplayer-player.js`（由 `site-player.js` 取代，目录内已确认不存在）。
+> 已删除的旧文件：`source/js/aplayer-player.js`（由 `site-player.js` 取代，目录内已确认不存在）；`_multiconfig.yml`（旧配置副本，无引用，已删除且 `.gitignore` 中对应忽略行一并移除）。
+
+> **刻意保留的备份资产**：`source/images/` 下的 `01.png` 1.8MB、`02.jpg` 0.5MB、`03.jpg` 1.7MB、`CP.png` 1.4MB 共约 **5.2MB**，是现有 webp 派生图的原始文件，**当前没有任何页面引用它们**。这是用户明确决定保留的备份，**不是遗留垃圾，不要移动或删除**（它们会随 git 一起分发；如要瘦身需先确认原始文件另有备份）。
 
 ---
 
@@ -213,27 +220,34 @@ off      = max(0, (V - sbw - 1720) / 2)     # 1720 = 340 + 1000 + 380
 3. **`favicon.ico` 缺失**：`source/` 下没有任何 favicon 文件，`/favicon.ico` 会 404（主题也没注入 `<link rel="icon">`）。属已知噪音，不影响功能。
 4. **残留变量 `--rightbar-w`**：`_config.stellar.yml` 的 `:root` 里仍声明 `--rightbar-w: 380px`，但实际布局用的是 `--rightbar-col-w`；全库无引用（主题用的是 `--rightbar-width-extra`）。可安全删除，本轮按"不动样式"原则未改。
 5. **唱片动画与"减少动态效果"**：`prefers-reduced-motion: reduce` 下只停住**未播放**的唱片（`.music-now__disc:not(.is-playing)`）；播放中的旋转被视为用户主动触发的反馈而保留。若产品口径要求完全关闭，需要改 `source/music/index.md` 内的 `@media (prefers-reduced-motion: reduce)`。
-6. **CI 的 Node 版本低于主题要求**：`hexo-theme-stellar@2.0.0` 的 `engines` 是 `>=22`，工作流固定 Node 20。目前构建能过（无 `engine-strict`），但属不受支持的组合；升级到 22 需单独验证。
-7. **本地与 CI 构建命令不一致**：本地 `npm run build` 不带 `_config.pages.yml`（root=`/`），CI 带（root=`/Fx-blog/`）。本地验证子路径效果需要手动造一个 `_config.pages.yml`（不入库）。
-8. **遗留 `_multiconfig.yml`**：仓库根有该文件，内容是一份带 `root: /Fx-blog/` 的旧配置副本，**无任何代码引用**，且已被 `.gitignore` 忽略。疑似上一轮临时产物，未删除（删除属判断项，留给下一轮确认）。
-9. **断点常量分散**：`1180` 同时出现在 CSS（多处）、JS（`RIGHTBAR_DRAWER_MAX`）、主题补丁（`rightbarDrawerQuery`，主题原值）；`900` 出现在 CSS 与补丁。改一处必漏，见 §13 待办。
+6. **断点常量分散**：`1180` 同时出现在 CSS（多处）、JS（`RIGHTBAR_DRAWER_MAX`）、主题补丁（`rightbarDrawerQuery`，主题原值）；`900` 出现在 CSS 与补丁。改一处必漏，见 §13 待办。
 
 ---
 
 ## 9. 性能基线
 
-**测量条件（必须与原记录一并复述）**：`npm run build` 产物；只统计 `public/index.html` 中**同源**的 `src`/`href` 引用文件 + HTML 本身；**不含**第三方 CDN（`cdn.jsdelivr.net` 的 lunar.js、`uapis.cn`、`baike.baidu.com` 等）；桌面取 `03-bg-1600.webp`，移动取 `03-bg-900.webp`（两者靠 `media` 互斥预加载）；gzip 为 `zlib.gzipSync` 的整文件压缩值，非 HTTP 协商结果。【实测，2026-11-10】
+**唯一口径 = `npm run measure`**（`tools/measure.js`）。改完构建后重新跑一次，把输出贴到本节，不要手算。
 
-| 视图 | 原始字节 | gzip 估算 |
+**口径定义**：
+
+- 统计对象：`public/index.html` 及其**同源**静态引用；第三方（`cdn.jsdelivr.net` 的 lunar.js、`uapis.cn`、`baike.baidu.com` 等）不计。
+- **首屏传输**（按档位）：HTML + 全部 CSS + 全部 `<script src>` + `media` 命中的预加载背景图 + 非懒加载 `<img>`；gzip 用 `zlib.gzipSync` 整文件压缩后求和（webp 不可压，按实际传输计入）。桌面档取 `media="(min-width: 901px)"` 的图，移动档取 `media="(max-width: 900px)"` 的图，两者互斥。
+- **整页原始字节**：HTML + 所有同源静态引用（含 `loading="lazy"` 图片与两个背景图变体、preload 与 stylesheet/script 的重复按路径去重），未压缩。
+- 条件：`npm run build`（含 `hexo clean`）刚产出的 `public/`；gzip 是"可复现的下限估算"，**不等于**服务器 brotli 后的真实传输量。
+
+【实测，2026-11-10，Node v26.13.0 / Windows / 构建产物 118 文件】
+
+| 档位 | 首屏传输（gzip） | 首屏原始 |
 | --- | --- | --- |
-| 桌面（>900px） | **1013.2 KB** | 649.9 KB |
-| 移动（≤900px） | **612.3 KB** | 248.8 KB |
+| 桌面（>900px） | **642.3 KB** | 1005.6 KB |
+| 移动（≤900px） | **241.2 KB** | 604.7 KB |
 
-明细（原始）：`index.html` 74.5 KB、`css/main.css` **308.2 KB**、`js/main.js` 20.5 KB、`js/spa.js` 7.6 KB、`js/site-player.js` 6.6 KB、`js/music-page.js` 3.7 KB、背景图 554.6 KB / 153.7 KB。
+明细（原始 / gzip）：`index.html` 74.5 KB / 20.8 KB；CSS 2 个 312.7 KB / 43.3 KB（`main.css` 308.2 KB + `stellar-icons.css` 4.5 KB）；JS 9 个 63.8 KB / 23.4 KB；首屏图只有一张背景 `03-bg-1600.webp` 554.6 KB（桌面）/ `03-bg-900.webp` 153.7 KB（移动）；**整页原始字节 1159.3 KB**。
 
-> ⚠ 上一轮记录的是「首屏移动 161KB / 桌面 348KB，LCP 约 116ms，CLS≈0」，**本轮无法复现**这些数字，且当时的测量条件未留下。差别最大的是背景图（单张 554.6 KB 就不可能塞进 348 KB）。请以上表为准，旧数字不要直接引用。
+> 结论很清楚：体积大头是背景图（554.6 KB 桌面），其次是 `main.css`（308.2 KB）。要优化先动这两处（换尺寸档位/压缩 webp/拆分 CSS），而不是加 JS 懒加载。
+> ⚠ 旧记录「首屏移动 161KB / 桌面 348KB」**已作废**——单张背景图就超过 348 KB，旧口径不可复现，不要引用。
 
-LCP / CLS：**本轮未测**。要复测需要：`npm run server` 或 `npx hexo server` 起本地服务 → 用无头浏览器 CDP 取 `PerformanceObserver` 的 `largest-contentful-paint` 与 `layout-shift`，注明视口、网络节流、缓存状态。
+LCP / CLS：**尚未测量**。要复测需要：`npm run server` 起本地服务 → 无头浏览器 CDP 取 `PerformanceObserver` 的 `largest-contentful-paint` 与 `layout-shift`，并注明视口、网络节流、缓存状态；测完把条件与数值一并写进本节。
 
 ---
 
@@ -277,7 +291,7 @@ LCP / CLS：**本轮未测**。要复测需要：`npm run server` 或 `npx hexo 
 3. **间距阶梯收口**：目前 `--gap-*` / `--fs-*` 等档位已建立，但仍有大量 `padding` / `margin` 直接写像素值，需纳入阶梯（纯样式整理，必须逐页对照 §7.4 回归）。
 4. **深浅色切换**：当前 `appearance.color_scheme: auto` 跟随系统，没有手动切换入口；如需手动切换要处理 `localStorage`、`color-scheme` 与背景图/卡片半透明底的对比度。
 5. **giscus 评论**：尚未接入；接入需要仓库 ID 与 category ID（在 giscus.app 生成），并注意 SPA 换页后评论 iframe 的重建（`stellar:navigation-complete` 里处理）。
-6. 删掉残留 `--rightbar-w`（§8-4）；确认 `_multiconfig.yml` 能否删除（§8-8）；补 `favicon.ico`（§8-3）；把 CI Node 升到 22（§8-6）。
+6. 删掉残留 `--rightbar-w`（§8-4）；补 `favicon.ico`（§8-3）。（`_multiconfig.yml` 已删、CI Node 已升 22，均已在第二批完成。）
 
 ---
 
@@ -285,7 +299,10 @@ LCP / CLS：**本轮未测**。要复测需要：`npm run server` 或 `npx hexo 
 
 **本轮实测通过**【实测】：
 
-- `npm run build` 成功（`Done: css 9, html 11, js 37, saved 279KB`，退出码 0）；
+- `npm run build` 成功（`Done: css 9, html 11, js 37, saved 279KB` + `[build] 完成`，退出码 0）；
+- 连续两次 `npm run build` 产物一致：两次均为 118 个文件 / 8,651,865 字节 / 清单 SHA-256 前缀相同（`clean` 已并入构建）；
+- `npm run measure` 可复现 §9 数字；
+- 产物占位符残留 0（`__SITE_ROOT__` / `__SITE_BRAND_*`），音乐页 `<audio>` 恰好 1 个；
 - git 仓库可用，`patches/` 已入库，`node_modules/`、`public/`、`db.json`、`_config.pages.yml` 未入库；
 - 补丁已生效：`node_modules/hexo-theme-stellar/source/js/main.js` 中 `leftbarDrawerQuery` / `leftbarHiddenQuery` 均为 `max-width: 900px`；
 - 文件清单与交接基本一致（读代码逐项核对）。
@@ -298,3 +315,19 @@ LCP / CLS：**本轮未测**。要复测需要：`npm run server` 或 `npx hexo 
 - 真机 iOS Safari / Android 浏览器上的 `100vh`、`backdrop-filter`、音频自动播放策略；
 - SPA 长时间换页后的内存增长（只有推算）；
 - 子路径 `/Fx-blog/` 的真实线上表现（本轮未推送、未触发 Actions）。
+
+---
+
+## 15. 变更记录
+
+### 第二批（2026-11-10）
+
+| 改动 | 之前 | 之后 |
+| --- | --- | --- |
+| 构建清理 | `build` = `hexo generate && minify`，重复构建叠加旧产物、体积失真（279KB → 21KB） | `build` = `tools/build.js`，固定 `clean → generate → minify`；两次构建产物字节级一致 |
+| 本地/CI 同源 | CI 手写 `npx hexo generate --config ... && node tools/minify.js` | 两边都走 `tools/build.js`，CI 用 `npm run build:pages`（仅多传 `_config.pages.yml`） |
+| 体积测量 | 数字靠手算，口径不明（161KB / 348KB 与实测冲突） | `npm run measure` 固定口径，见 §9 |
+| CI Node | 20（低于主题 `engines: >=22`） | 22 |
+| 遗留文件 | 根目录 `_multiconfig.yml`（无引用，被忽略） | 已删除，`.gitignore` 对应行一并移除 |
+
+未涉及任何布局、样式与前端脚本运行逻辑；构建产物除 `public/` 时间戳外无行为变化。

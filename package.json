@@ -3,9 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "hexo generate && node tools/minify.js",
+    "build": "node tools/build.js",
+    "build:pages": "node tools/build.js --pages",
     "build:raw": "hexo generate",
     "clean": "hexo clean",
+    "measure": "node tools/measure.js",
     "server": "hexo server",
     "postinstall": "patch-package"
   },
