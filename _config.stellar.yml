@@ -1194,19 +1194,31 @@ inject:
         padding: 0 !important;
         display: flex !important;
         flex-direction: column !important;
-        transition: transform var(--dur-slow) var(--ease), opacity var(--dur-slow) var(--ease) !important;
+        /* 展开/收起：宽度与贴边距离一起过渡，面板向左生长、封面留在右缘 */
+        transition: width var(--dur-slow) var(--ease), right var(--dur-slow) var(--ease),
+                    bottom var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease),
+                    opacity var(--dur-slow) var(--ease) !important;
         transform: translateX(0) !important;
         opacity: 1 !important;
         pointer-events: auto !important;
       }
-    
-      @media (max-width: 1180px) {
-        #music-drawer {
-          transform: translateX(100%) !important;
-          opacity: 0 !important;
-          pointer-events: none !important;
-        }
+
+      /* 收起态：只剩 76px 圆形封面贴在视口右缘（与左栏头像 48px 同量级，底部留 24px） */
+      #music-drawer.is-collapsed {
+        width: 76px !important;
+        right: 8px !important;
+        bottom: 24px !important;
       }
+      #music-drawer.is-collapsed .site-mini {
+        padding: 0;
+        gap: 0;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+      #music-drawer.is-collapsed .site-mini__info { display: none; }
 
       /* 播放器视觉样式见下方 .site-mini 规则（source/js/site-player.js 构建 DOM） */
 
@@ -1247,7 +1259,13 @@ inject:
         -webkit-backdrop-filter: var(--blur-mini);
         box-shadow: var(--shadow-mini);
         color: var(--text-primary);
+        /* 收起/展开时内边距与底板一起过渡，避免高度跳变 */
+        transition: padding var(--dur-slow) var(--ease), background var(--dur-slow) var(--ease),
+                    border-color var(--dur-slow) var(--ease), box-shadow var(--dur-slow) var(--ease);
       }
+
+      /* 没有当前曲目时不显示任何形态（默认会预选第一首，通常都有） */
+      .site-mini.is-empty { display: none; }
 
       /* 首页抽屉黑胶：小尺寸专用（76px）。盘身用与音乐页同一张裁紧素材，1:1 铺满；
          只做圆形裁切，不垫底色、不加外阴影，避免盘缘出现深色环；
@@ -1269,6 +1287,17 @@ inject:
 
       .site-mini.is-playing .site-mini__disc {
         animation-play-state: running;
+      }
+
+      /* 圆形封面同时是展开/收起按钮：键盘焦点需要可见 */
+      .site-mini__disc:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* 减少动态效果：停转封面 */
+      @media (prefers-reduced-motion: reduce) {
+        .site-mini__disc { animation: none; }
       }
 
       /* 未选曲时中心孔兜底 */

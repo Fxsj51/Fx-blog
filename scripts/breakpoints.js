@@ -46,7 +46,7 @@ function check() {
   //    （注释里的同源说明不计入；新增/删除断点媒体查询后请同步这里的期望计数）
   const css = stripComments(config);
   const expected = [
-    ['max', RIGHTBAR_DRAWER_MAX, 3],      // 抽屉样式、透明背景、音乐抽屉
+    ['max', RIGHTBAR_DRAWER_MAX, 2],      // 抽屉样式、透明背景（音乐抽屉改为收起态，不再用它）
     ['min', RIGHTBAR_DRAWER_MAX + 1, 1],  // 无右栏页面固定侧栏
     ['max', LEFTBAR_DRAWER_MAX, 3],       // 背景图预加载 + 两处左栏抽屉
     ['min', LEFTBAR_DRAWER_MAX + 1, 2]    // 背景图预加载 + 折叠态区间

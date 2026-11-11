@@ -28,6 +28,13 @@
   // 迷你条拖动状态：pointerdown 时快照一次 rect，整段拖动复用（与音乐页同一套逻辑）
   var miniDrag = null;
   var miniDragBound = false;
+  // 迷你条展开状态：收起时只剩圆形封面（贴视口右缘），点封面切换；
+  // 用户展开后按「最后一次交互 + 8s 无操作」自动收回，播放不中断
+  var expanded = false;
+  var autoHide = false;
+  var hoverInside = false;
+  var collapseTimer = null;
+  var COLLAPSE_DELAY = 8000;
 
   function siteRoot() {
     try {
@@ -334,6 +341,7 @@
     content.appendChild(root);
     mini = {
       root: root,
+      disc: root.querySelector('.site-mini__disc'),
       cover: root.querySelector('.site-mini__cover'),
       title: root.querySelector('.site-mini__title'),
       artist: root.querySelector('.site-mini__artist'),
@@ -348,12 +356,25 @@
       var target = e.target.closest ? e.target.closest('[data-act]') : null;
       if (!target) return;
       var act = target.getAttribute('data-act');
+      // 圆形封面是展开/收起开关（收起态点它原地展开，展开态再点收回）
+      if (act === 'toggle' && target.classList.contains('site-mini__disc')) {
+        e.preventDefault();
+        setExpanded(!expanded, true);
+        return;
+      }
       if (act === 'toggle') { e.preventDefault(); toggle(); return; }
       if (act === 'prev') { e.preventDefault(); play(index - 1); return; }
       if (act === 'next') { e.preventDefault(); play(index + 1); return; }
       // seek 分支已删除：迷你条改为 pointerdown/move/up 驱动（click 由拖动补发，不能再按坐标 seek，
       // 否则键盘/辅助技术触发的 click（clientX=0）会把进度打到 0）
     });
+
+    // 悬停/键盘焦点在组件内时不自动收起；离开后重新按 8s 计时
+    root.addEventListener('pointerenter', function () { hoverInside = true; clearCollapseTimer(); });
+    root.addEventListener('pointerleave', function () { hoverInside = false; armCollapseTimer(); });
+    // 点内部控件、或用 Tab 把焦点移进组件，都算一次交互：重置计时（触屏无悬停时同样有效）
+    root.addEventListener('pointerdown', function () { if (expanded && autoHide) armCollapseTimer(); });
+    root.addEventListener('focusin', function () { if (expanded && autoHide) armCollapseTimer(); });
 
     bindMiniDrag();
     mini.bar.addEventListener('pointerdown', function (e) {
@@ -375,6 +396,7 @@
     if (!mini) return;
     var st = snapshot();
     var track = st.track;
+    mini.root.classList.toggle('is-empty', !track);
     mini.root.classList.toggle('is-playing', st.playing);
     mini.title.textContent = track ? track.title : '未选择曲目';
     mini.artist.textContent = track ? (track.artist || '未知歌手') : '点击进入音乐页';
@@ -395,18 +417,59 @@
     mini.toggle.setAttribute('aria-label', st.playing ? '暂停' : '播放');
   }
 
-  // 音乐页有自己的大播放器，抽屉不重复；无右栏页面保持原状（不出现播放器）
+  // 音乐页有自己的大播放器，抽屉不重复；无右栏页面与窄屏收起为贴右缘的圆形封面
+  function clearCollapseTimer() {
+    if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; }
+  }
+
+  // 只在「用户主动展开」后计时；悬停暂停，离开后重新计时
+  function armCollapseTimer() {
+    clearCollapseTimer();
+    if (!expanded || !autoHide || hoverInside) return;
+    collapseTimer = setTimeout(function () {
+      collapseTimer = null;
+      setExpanded(false, false);
+    }, COLLAPSE_DELAY);
+  }
+
+  function setExpanded(next, auto) {
+    expanded = !!next;
+    autoHide = expanded && !!auto;
+    var drawer = document.getElementById('music-drawer');
+    if (drawer) drawer.classList.toggle('is-collapsed', !expanded);
+    if (mini) {
+      mini.root.classList.toggle('is-expanded', expanded);
+      mini.disc.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      mini.disc.setAttribute('aria-label', expanded ? '收起播放器' : '展开播放器');
+      mini.disc.setAttribute('title', expanded ? '收起播放器' : '展开播放器');
+      // 收起时焦点若在面板内部，移回封面，避免焦点丢到 body
+      if (!expanded && document.activeElement && mini.root.contains(document.activeElement) &&
+          document.activeElement !== mini.disc) {
+        mini.disc.focus({ preventScroll: true });
+      }
+    }
+    armCollapseTimer();
+  }
+
   function syncDrawer() {
     var drawer = document.getElementById('music-drawer');
     if (!drawer) return;
-    var hide = !!document.querySelector('.music-page') || !document.getElementById('rightbar-region');
-    if (hide) {
+    if (document.querySelector('.music-page')) {
+      clearCollapseTimer();
       drawer.style.setProperty('display', 'none', 'important');
       return;
     }
     drawer.style.removeProperty('display');
     buildMini();
     renderMini();
+    // 没有当前曲目（空歌单）时整体不出现，也避免不可见的封面区域挡住点击
+    if (!snapshot().track) {
+      clearCollapseTimer();
+      drawer.style.setProperty('display', 'none', 'important');
+      return;
+    }
+    // 有右栏且不在抽屉断点（>1180）→ 默认整条展开；其余情况默认只是一枚圆形封面
+    setExpanded(!!document.getElementById('rightbar-region') && window.innerWidth > 1180, false);
   }
 
   window.SitePlayer = {
@@ -448,4 +511,24 @@
     boot();
   }
   document.addEventListener('stellar:navigation-complete', syncDrawer);
+  // 跨过 1180 断点时在「整条 / 圆形封面」之间切换
+  window.addEventListener('resize', syncDrawer);
+
+  // 展开态点组件以外的任意位置立即收回（捕获阶段，元素 stopPropagation 也拦不住）；
+  // 只看真实指针事件，程序化派发的 click（isTrusted=false）不算用户操作
+  function onDocPointerDown(e) {
+    if (!expanded || e.isTrusted === false) return;
+    var drawer = document.getElementById('music-drawer');
+    if (!drawer) return;
+    var path = typeof e.composedPath === 'function' ? e.composedPath() : null;
+    var inside = path && path.length ? path.indexOf(drawer) !== -1 : drawer.contains(e.target);
+    if (!inside) setExpanded(false, false);
+  }
+  document.addEventListener('pointerdown', onDocPointerDown, true);
+
+  // Escape 收起
+  document.addEventListener('keydown', function (e) {
+    if (!expanded) return;
+    if (e.key === 'Escape' || e.key === 'Esc') setExpanded(false, false);
+  }, true);
 })();

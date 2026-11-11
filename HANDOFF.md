@@ -1,7 +1,7 @@
 # HANDOFF — Fx-blog 交接文档
 
 > 本文件面向"下一轮接手的人/AI"。目标是：读完之后能在**不改坏站点**的前提下继续开发。
-> 最后更新：2026-11-11（第十八批：音乐页右缘留白 + 左列收窄，歌词保持文档流）
+> 最后更新：2026-11-11（第十八批：歌词保持文档流；第十九批：迷你播放器收起为右侧圆形封面）
 > 状态标记：**【实测】**= 本轮实际跑过/量过；**【推算】**= 按 CSS 公式推导，未在浏览器里量；**【未覆盖】**= 从没跑过。
 
 ---
@@ -91,7 +91,7 @@ npm run server       # hexo server，本地预览（注意：本地没有 _confi
 - 全站**只有一个** `<audio>`，`id="music-audio"`，常驻宿主 `#site-audio-host`（`position:fixed`、0×0，挂在 `body` 上，**在 `#main` 之外**）。
 - 换页流程：`commit()` 先 `SitePlayer.unmount()` 把 `<audio>` 移回宿主 → 替换 `#main`（并删掉目标文档里的 `#music-audio` 占位）→ 若新页是音乐页再 `mount('.music-now__info')`。移动同一个媒体元素不会中断播放、不会重新请求。
 - `preload="none"`、初始**不设** `src`，点选曲目才 `load()`。
-- 视图有两个：音乐页大卡片，以及右下角抽屉迷你播放器 `#music-drawer`（`buildMini()`）；音乐页和无右栏页面会隐藏抽屉，避免重复。
+- 视图有两个：音乐页大卡片，以及右下角抽屉迷你播放器 `#music-drawer`（`buildMini()`）；音乐页有大播放器，抽屉整体隐藏；无右栏页面或 ≤1180 时抽屉收起为贴右缘的圆形封面（见 §19）。
 - 对外 API：`window.SitePlayer.{ensure,play,toggle,next,prev,seek,mount,unmount,subscribe,state,playlist,index}`；事件 `siteplayer:change|time|meta`。
 - ⚠ **不要复用/新建第二个 `<audio>`，也不要把 `#music-audio` 当"每页一个"来写。**
 
@@ -792,6 +792,33 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 - 1180：单列，歌词与卡片同宽 720；1181：两列，歌词 300 宽、在卡片下一行（553.6 > 537.6）；两档 `scrollWidth===clientWidth`。
 - SPA 首页↔音乐页往返后歌词 static 重建、全页 1 个 `<audio>`；375：static/300 高、17px/26.35px、滚到底面板随文档上移（1309→−31）；全程无 JS 异常/console.error。
 - 截图（工作区，不入库）：`shots\static18-1440-{top,mid,bottom}.png`、`shots\static18-1920-{top,mid,bottom}.png`、`shots\static18-1180.png`、`shots\static18-1181.png`、`shots\static18-1440-spa-return.png`、`shots\static18-375-full.png`、`shots\static18-375-bottom.png`。
+
+### 第十九批（2026-11-11）：迷你播放器收起态 —— 右侧常驻圆形封面
+
+**改动文件**：`_config.stellar.yml`（注入 CSS）、`source/js/site-player.js`、`scripts/breakpoints.js`（期望计数 3→2）。
+
+**形态**：迷你播放器 `#music-drawer` 不再在无右栏页面/窄屏整块消失，而是收成一枚圆形当前曲目封面（仍是同一个 `.site-mini`，不是新节点）：
+- 收起态：`width:76px; right:8px; bottom:24px`，只显示 `.site-mini__disc`；盘身沿用 `CP-disc-cropped.webp`，中心 53% 圆形曲目封面（与迷你条/音乐页同一套 label 裁圆），`border-radius:50%` 不露方角。
+- 尺寸取舍：左栏头像实测 48×48；封面沿用组件里既有的 76px 唱片，这样收起/展开是同一枚盘在缩放移动，不会出现 76→48 的尺寸跳变（属同一量级，且与小尺寸黑胶既有视觉一致）。
+- 展开态：`width:360px; right:30px; bottom:30px`，`.site-mini` 恢复原 padding/底板/信息区，布局与控件完全不变。
+- 出现条件：无右栏页面（文章/关于/分类/标签/归档等）与 ≤1180 抽屉断点；有右栏且 >1180 时仍默认整条展开；`/music/` 仍有大播放器，抽屉整体 `display:none` 不重复；空歌单不出现。
+
+**交互**：
+- 点圆形封面 = 展开/收起（`aria-expanded` 同步，`aria-label`/`title` 在「展开播放器 / 收起播放器」间切换）；封面不再是播放/暂停按钮，播放/暂停仍在条内按钮。
+- 展开后按「最后一次交互 + 8s 无操作」自动收回：`pointerenter` 悬停暂停计时、`pointerleave` 重新计时；`pointerdown`/`focusin` 视为交互并重置；收回不打断播放（只切 class）。
+- 点组件以外任意位置立即收回：`document` 捕获阶段 `pointerdown`，用 `composedPath()` 判断是否在 `#music-drawer` 内（目标元素 `stopPropagation` 也拦不住）；忽略 `isTrusted === false` 的程序化事件。`Escape` 同样收回。所有收起路径都清计时器。
+- 过渡：`#music-drawer` 过渡 `width/right/bottom`，`.site-mini` 过渡 `padding/background/border-color/box-shadow`（`--dur-slow`），面板向左生长、封面贴右缘，不跳变。
+- 无障碍：`<button>` 可聚焦、`:focus-visible` 描边、Enter/Space 切换；`prefers-reduced-motion: reduce` 下停转（系统级开启时无动画）。
+
+**验证【实测】**：`npm run build` 通过 + `[breakpoints] 断点校验通过（1180/1181、900/901…）`；`verify-collapse18.js` **37/37 PASS**（无头、真实 pointer/key 事件）：
+- 1440 文章页（组件隐藏）：76×76 正圆、距视口右 8 / 底 24、`position:fixed`、`z-index:99`、封面为当前曲目、`aria-expanded=false`；无横向溢出；`sw===cw` 1432。
+- 点封面展开：宽 360、距右/底各 30、信息区可见、`aria-expanded=true`；播放时 `animation-play-state:running`，暂停后 `paused` 且 transform 两帧一致（停在当前角度）。
+- 8s 自动收回：展开后移开鼠标等 9s 收回；收回前后 `currentTime` 1.43→10.56（继续播放）；鼠标停留在条内 9.5s 不收回，移出 8s 后收回；连点两次立即收起，再等 9.5s 仍收起（无残留计时器）。
+- 点正文（该元素 `stopPropagation`）立即收回；程序化 `pointerdown`（`isTrusted=false`）不收回；Escape 收回。
+- 切歌封面更新（14.3 Billion Years → Billie Jean）；键盘 Enter 展开且 `aria-expanded=true`；reduced-motion 下 `animation-name:none`，恢复 no-preference 后回到 `site-mini-spin`。
+- SPA：首页（有右栏）整条展开 → 文章页恢复圆封面 → 音乐页整体隐藏；全程 1 个 `<audio>`、无 JS 报错。
+- 375：76px、距右 8/底 24、无横向溢出；点开宽 315 不溢出。1180 首页圆封面、1181 首页整条、两档均无横向溢出。
+- 截图（工作区，不入库）：`shots\feature18-1440-hidden-full.png`、`shots\feature18-1440-expanded.png`、`shots\feature18-disc-zoom-playing.png`、`shots\feature18-disc-zoom-paused.png`、`shots\feature18-375.png`、`shots\feature18-375-expanded.png`。
 
 
 
