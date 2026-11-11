@@ -496,7 +496,7 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 
 **时间轴（实测）**：
 
-- Billie Jean：本地音频 11251 帧（Xing 声明 11250），帧时长 293.904s，解码 293.827s。贴来末行 4:49.02=289.02s，与文件时长相差 +4.807s，超出「±1.5s 内直接采用」的门槛。实测 `lastAudible(-35dB)=289.30s`，尾部静默 4.53s(-35dB)/2.95s(-50dB)，说明 4:49.03 之后是片尾淡出与近静音，不是时间轴漂移。→ **保留现有时间轴，不做偏移**。贴来时间轴与现有时间轴在 33 个唯一锚点上逐行差 median +0.02s、mean +0.009s、sd 0.039s、范围 -0.07~+0.07s（重复 chorus 不参与配对），两者等价。
+- Billie Jean：**本节结论已被下方「第七批」取代**（时间轴改为整份采用用户 LRC，译文 34 行，署名改回 `Michael Jackson`）。以下为当时的实测记录，保留备查。本地音频 11251 帧（Xing 声明 11250），帧时长 293.904s，解码 293.827s。贴来末行 4:49.02=289.02s，与文件时长相差 +4.807s，超出「±1.5s 内直接采用」的门槛。实测 `lastAudible(-35dB)=289.30s`，尾部静默 4.53s(-35dB)/2.95s(-50dB)，说明 4:49.03 之后是片尾淡出与近静音，不是时间轴漂移。→ **保留现有时间轴，不做偏移**。贴来时间轴与现有时间轴在 33 个唯一锚点上逐行差 median +0.02s、mean +0.009s、sd 0.039s、范围 -0.07~+0.07s（重复 chorus 不参与配对），两者等价。
 - Come And Get Your Love：7975 帧（Xing 7974），帧时长 208.327s，解码 208.253s；`tailZeroSamples=0`（不是数字零样本），`lastAudible(-50dB)=204.40s`、`(-35dB)=203.34s`，尾部静默 3.85/4.91s。→ **不是截断、也不是声明帧数虚报**，音频在 ~3:24.4 自然结束，3:23.03–3:28.10 的尾部歌词落在淡出/近静音区（实际不可闻）。→ **不采用贴来时间轴，保留现有时间轴**。贴来 vs 现有在 12 个唯一锚点上的差为 median -0.175s、mean -0.152s、sd 0.358s、范围 -0.69~+0.79s；常数模型最大残差 0.965s，线性拟合 slope 0.00547、intercept -0.431、残差 sd 0.318s，残差接近 1s，不能用一个常数偏移「校正」。
 - 能量包络锚点（Web Audio `decodeAudioData` + 20ms RMS，起音强度 `max(0, rms[i]-rms[i-2])`）每首 8 个：Billie drift median -0.19s、mean -0.336s、sd 0.56s、min -1.19s、max +0.79s（287.43s 的末锚点强度仅 0.101，按不可靠剔除，不影响结论）；Come median -0.32s、mean -0.288s、sd 0.503s、min -1.16s、max +0.34s。两首都没有稳定的常数/线性漂移，故统一保留现有时间轴，贴来版本只用于文本与译文。
 
@@ -513,7 +513,7 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 
 | 曲目 | 字段 | 原值 | 贴来值 | 采用 |
 | --- | --- | --- | --- | --- |
-| Billie Jean | lyricist / composer | Michael Jackson | Michael J. Jackson | 贴来值（同一人的完整写法） |
+| Billie Jean | lyricist / composer | Michael Jackson | Michael J. Jackson | ~~贴来值~~ → 第七批改回 `Michael Jackson` |
 | Billie Jean | arranger | Michael Jackson | Michael Jackson | 一致，不变 |
 | Come And Get Your Love | lyricist | Lolly Vegas | Lolly Vegas/Pat Vegas | 贴来值（补上共同作词者） |
 | Come And Get Your Love | composer | Lolly Vegas | Lolly Vegas | 一致，不变 |
@@ -527,3 +527,25 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 - 布局：1440 `scrollWidth==clientWidth==1432`、375 `375==375`；全页始终 1 个 `<audio>`；音乐页 0 JS 异常（本次连首页也没有异常）。
 - 换页：首页 → SPA `/music/`（真实鼠标命中链接，`window` 标记保留）→ 播放 Billie 64/35；再回首页、再进音乐页，仍 64/35 且 1 个 audio。
 - 音频文件未变化：Billie/Come 的 mp3 blob hash 与 `HEAD` 一致（`341b078`/`12bfff3`），`playlist.yml` 的音频路径与 `.lrc`/`.zh.lrc` 基名一致，无孤儿歌词文件。
+
+### 第七批（2026-11-11）：Billie Jean 时间轴与译文整份替换（取代第六批的 Billie 结论）
+
+**数据来源**：用户提供的 LRC + 双语对，直接采用。原文逐字照录，不做润色、不合并相邻行、不机翻。原始输入留在工作区 `b3-billie-lrc.txt`、`b3-billie-bilingual-a/b.txt`，另存拼接后的干净版 `b4-billie-lrc.txt`、`b4-billie-bilingual.txt`（不进入仓库）；从 `b4` 重跑生成器，产物与仓库两份文件 sha256 完全一致。
+
+**时间轴**：整份替换为新 `.lrc`，67 行 = 64 文本行 + 3 空行（对应原 `[00:50.85]`/`[03:34.88]` 与末条 `[04:49.02]` 仅时间戳条目，转成纯空行作段落分隔）；UTF-8 无 BOM、LF。首行 `[00:29.27] She was more like a beauty queen from a movie scene`，末行 `[04:47.43] Yeah, Billie Jean is not...`。
+
+**译文挂载**：只做精确匹配（同第六批归一化规则：NFKC、弯直引号统一、去括号注释、去标点、重复字母收敛、小写、空白归一），按顺序消费重复行、不循环复用；允许 2~3 条双语并成 1 行（因用户 LRC 本身合并了这些行）。不采用任何相似度近似配对。
+
+**结果**：64 文本行 / 99 条双语（72 带译）→ 38 行成对、34 行有译文（`.zh.lrc` 34 行，格式 `[mm:ss.xx]中文`，无空格）；30 行无译文 = 26 行未命中 + 4 行成对但贴文本身无译（拟声/纯括号注释）。相对旧版：`.lrc` 文本行 64→64，`.zh.lrc` 35→34（−1）；旧译文整体替换，不混入旧网易云译文。
+
+**署名**：`lyricist`/`composer` 由 `Michael J. Jackson` 改回 `Michael Jackson`；`arranger` 本次未提供，保留现值 `Michael Jackson`（与第六批一致，未改动）。
+
+**验证（构建后 `npm run preview` :4173，有头 Edge + CDP，38/38 PASS）**：
+
+- `npm run build` 通过，断点校验通过（1180/1181、900/901 与注入 JS、patches 一致）。
+- DOM：Billie 原文 64 行 / 译文 34 行，与文件逐字一致，`strayZh=0`，无空译文；另复核 Come 71/49、That's The Way 32/27 未受影响。
+- seek（暂停态精确落点）：20% 58.765s→index 6（无译）、60% 176.296s→36（无译）、90% 264.444s→56（「她说他是我的骨肉」），高亮行与按 LRC 独立计算的期望一致。
+- 真实播放锚点：29.643s→index 0、136.032s→25、244.077s→51。
+- 布局 1440 `scrollWidth==clientWidth==1432`、375 `375==375`；全页 1 个 `<audio>`；首页→音乐页→首页→音乐页往返后仍是 64/34。
+- 音乐页 0 JS 异常；首页仍有 2 次 `Cannot set properties of null (setting 'innerHTML')`（右侧栏农历 CDN 回退，第六批前已存在，与音乐页无关）。
+
