@@ -92,7 +92,9 @@ rightbar:
 .music-ctl__icon:hover { background: rgba(127, 127, 127, .22); }
 .music-ctl__icon:focus-visible, .music-seek:focus-visible { outline: 2px solid #1DB954; outline-offset: 2px; }
 .music-ctl__icon.is-muted { opacity: .45; }
-.music-ctl__time { flex: 0 0 auto; font-size: 12px; opacity: .7; font-variant-numeric: tabular-nums; }
+/* 等宽数字 + 固定最小宽度：拖动时 0:59→1:00、总时长载入后位数变化都不再挤动轨道（否则
+   pointermove 期间轨道 rect 会抖动，也会让按下时快照的 rect 与视觉位置错位） */
+.music-ctl__time { flex: 0 0 auto; min-width: 5ch; text-align: center; font-size: 12px; opacity: .7; font-variant-numeric: tabular-nums; }
 .music-seek {
   position: relative; flex: 1 1 auto; min-width: 80px; height: 22px;
   display: flex; align-items: center; cursor: pointer; touch-action: none;

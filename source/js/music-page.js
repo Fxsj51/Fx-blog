@@ -103,9 +103,10 @@
       if (seekEl) seekEl.setAttribute('aria-valuetext', clock(st.currentTime) + ' / ' + clock(dur));
     }
 
-    // 拖动期间由指针位置驱动，不被 timeupdate 回写覆盖（否则会出现「松手弹回」）
+    // 拖动期间由指针位置驱动，不被 timeupdate 回写覆盖（否则会出现「松手弹回」）；
+    // 松手后也留一小段窗口，等 seeked/timeupdate 把真实位置同步上来
     function syncProgress(st) {
-      if (dragging) return;
+      if (dragging || Date.now() < holdUntil) return;
       var dur = st.duration || 0;
       paintProgress(dur > 0 ? st.currentTime / dur : 0);
       paintTimes(st);
@@ -128,31 +129,64 @@
     }
 
     // 比例一律按「按下时快照的轨道 rect」算：不用 e.offsetX / e.layerX（指针被捕获后它们相对
-    // 的是 thumb 而不是轨道，会永远接近 0），也不用 e.target 的 rect（target 往往是 thumb 子节点）
+    // 的是 thumb 而不是轨道，会永远接近 0），也不用 e.target 的 rect（target 往往是 thumb 子节点）。
+    // 矩形不合法时返回 null（而不是 0）：调用方必须放弃本次 seek，绝不能把非法坐标落成 0。
     function ratioOf(clientX) {
-      if (!dragRect || !dragRect.width) return 0;
-      return Math.min(1, Math.max(0, (clientX - dragRect.left) / dragRect.width));
+      if (!dragRect || !isFinite(dragRect.left) || !isFinite(dragRect.width) || dragRect.width <= 0) return null;
+      if (!isFinite(clientX)) return null;
+      var ratio = (clientX - dragRect.left) / dragRect.width;
+      if (!isFinite(ratio)) return null;
+      return Math.min(1, Math.max(0, ratio));
     }
+
+    // 媒体是否可 seek 统一由 SitePlayer.canSeek() 判定（与侧栏迷你条共用一套逻辑）：
+    // 服务端不支持 Range（如 hexo server）时 audio.seekable 是零宽区间，给 currentTime
+    // 赋值会被浏览器吞掉并回到 0，界面就会显示「拖到哪都归 0」。
+    var seekWarned = false;
 
     function applyRatio(ratio) {
+      if (ratio == null || !isFinite(ratio)) return; // 坐标非法：放弃这次 seek
+      ratio = Math.min(1, Math.max(0, ratio));
       var st = player.state();
-      var dur = st.duration || 0;
-      paintProgress(ratio);
-      if (dur > 0) {
-        pendingRatio = null;
-        if (curEl) curEl.textContent = clock(ratio * dur);
-        if (seekEl) seekEl.setAttribute('aria-valuetext', clock(ratio * dur) + ' / ' + clock(dur));
-        player.seek(ratio * dur); // seek 会派发 time 事件，歌词随之高亮
+      var dur = st.duration;
+      if (!isFinite(dur) || dur <= 0) {
+        // preload="none" 时首帧没有 duration：不能静默吞掉这次拖动（表现为「一拖就回 0」）。
+        // 先记住目标比例并触发加载，loadedmetadata 到达后再落点。
+        pendingRatio = ratio;
+        if (audioEl && audioEl.readyState === 0) {
+          try { audioEl.load(); } catch (err) {}
+        }
         return;
       }
-      // preload="none" 时首帧没有 duration：不能静默吞掉这次拖动（表现为「一拖就回 0」）。
-      // 先记住目标比例并触发加载，loadedmetadata 到达后再落点。
-      pendingRatio = ratio;
-      if (audioEl && audioEl.readyState === 0) {
-        try { audioEl.load(); } catch (err) {}
+      var target = ratio * dur;
+      if (!isFinite(target) || target < 0) return;
+      if (!player.canSeek || !player.canSeek()) {
+        // 不可 seek 时不画目标位置：画了就是「拖到 50% 又归 0」的假象
+        pendingRatio = null;
+        if (!seekWarned) {
+          seekWarned = true;
+          console.warn('[music] 音频当前不可 seek（服务端缺少 Range/Accept-Ranges 支持），本次拖动已忽略');
+        }
+        paintProgress(st.currentTime / dur);
+        paintTimes(st);
+        return;
+      }
+      pendingRatio = null;
+      paintProgress(ratio);
+      if (curEl) curEl.textContent = clock(target);
+      if (seekEl) seekEl.setAttribute('aria-valuetext', clock(target) + ' / ' + clock(dur));
+      if (player.seekToRatio) player.seekToRatio(ratio); else player.seek(target); // seek 会派发 time 事件，歌词随之高亮
+      // 赋值被媒体吞掉或被别处写回时，把进度条回滚到真实位置，绝不停在一个没落地的比例上
+      var landed = audioEl ? Math.abs((audioEl.currentTime || 0) - target) <= 0.5 : false;
+      if (!landed) {
+        paintProgress(audioEl ? (audioEl.currentTime || 0) / dur : 0);
+        paintTimes(player.state());
       }
     }
 
+    // 松手后短暂保留 dragging 的「不回写」状态：seeked/timeupdate 往往晚一两帧到达，
+    // 期间若按 timeupdate 回写，会把刚落地的位置画回旧值（表现成回弹）。
+    var holdUntil = 0;
     function endDrag(clientX, apply) {
       if (!dragging) return;
       if (apply && clientX != null) applyRatio(ratioOf(clientX)); // pointercancel 的坐标不可信
@@ -167,16 +201,24 @@
       // 拖动结束后浏览器补发的 click 要吃掉。这里不能用定时器复位——click 是 pointerup 之后
       // 单独的 task，0ms 定时器可能先跑，标志就白设了；改由下一次 pointerdown 复位。
       suppressClick = true;
-      syncProgress(player.state());
+      holdUntil = Date.now() + 250;
+      setTimeout(function () {
+        if (dragging) return;
+        holdUntil = 0;
+        syncProgress(player.state());
+      }, 260);
     }
 
     if (seekEl) {
       seekEl.addEventListener('pointerdown', function (e) {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         if (dragging) endDrag(null, false); // 上一次抬手丢了，也不能让新的一次拖不动
+        var rect = seekEl.getBoundingClientRect();
+        // 布局未就绪（宽 0 / NaN / 隐藏）时不接这次按下：此前会因此算出 ratio 0 而 seek(0)
+        if (!rect || !isFinite(rect.left) || !isFinite(rect.width) || rect.width <= 0) return;
         dragging = true;
         dragPointerId = e.pointerId;
-        dragRect = seekEl.getBoundingClientRect(); // 快照轨道容器（不是 thumb）
+        dragRect = rect; // 快照轨道容器（不是 thumb），整段拖动复用，不在 move 里重取
         seekEl.classList.add('is-dragging');
         try { seekEl.setPointerCapture(e.pointerId); } catch (err) {}
         if (e.cancelable) e.preventDefault();
@@ -199,6 +241,9 @@
     dragHandlers = {
       move: function (e) {
         if (!dragging || e.pointerId !== dragPointerId) return;
+        // 真实拖动必然按着键：hover 移动（buttons=0）不参与 seek。
+        // 否则 pointerup 丢失后残留的 hover 会把进度打到轨道边缘（ratio 1 或 0）。
+        if (e.buttons === 0) return;
         if (e.cancelable) e.preventDefault();
         applyRatio(ratioOf(e.clientX));
       },

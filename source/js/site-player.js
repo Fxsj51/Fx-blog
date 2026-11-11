@@ -18,6 +18,9 @@
   var subscribers = [];
   var playlistCache = null;
   var mini = null;
+  // 迷你条拖动状态：pointerdown 时快照一次 rect，整段拖动复用（与音乐页同一套逻辑）
+  var miniDrag = null;
+  var miniDragBound = false;
 
   function siteRoot() {
     try {
@@ -136,6 +139,32 @@
     emit('change');
   }
 
+  // 媒体可 seek 判定：服务端不支持 Range 时 audio.seekable 是零宽区间，
+  // 给 currentTime 赋值会被吞掉并回到 0。音乐页进度条与侧栏迷你条共用这一判定。
+  function mediaSeekable(a) {
+    if (!a) return false;
+    var ranges = a.seekable;
+    if (!ranges || !ranges.length) return false;
+    for (var i = 0; i < ranges.length; i++) {
+      if (isFinite(ranges.start(i)) && isFinite(ranges.end(i)) && ranges.end(i) > ranges.start(i)) return true;
+    }
+    return false;
+  }
+
+  function canSeek() {
+    return !!audio && isFinite(audio.duration) && audio.duration > 0 && mediaSeekable(audio);
+  }
+
+  // 按比例 seek；比例非法、duration 非法、媒体不可 seek 时一律放弃（绝不落到 0）
+  function seekToRatio(ratio) {
+    if (ratio == null || !isFinite(ratio) || !canSeek()) return false;
+    ratio = Math.min(1, Math.max(0, ratio));
+    var target = ratio * audio.duration;
+    if (!isFinite(target) || target < 0) return false;
+    seek(target);
+    return true;
+  }
+
   function seek(seconds) {
     if (!audio) return;
     var dur = audio.duration;
@@ -166,6 +195,42 @@
   }
 
   // ---------------- 侧栏迷你视图 ----------------
+  // 迷你条同样支持拖动：按下即跳、移动跟随、松手定稿；坐标只用按下时快照的 rect
+  function miniRatio(clientX) {
+    if (!miniDrag) return null;
+    var rect = miniDrag.rect;
+    if (!rect || !isFinite(rect.left) || !isFinite(rect.width) || rect.width <= 0) return null;
+    if (!isFinite(clientX)) return null;
+    var ratio = (clientX - rect.left) / rect.width;
+    if (!isFinite(ratio)) return null;
+    return Math.min(1, Math.max(0, ratio));
+  }
+
+  function bindMiniDrag() {
+    if (miniDragBound) return;
+    miniDragBound = true;
+    document.addEventListener('pointermove', function (e) {
+      if (!miniDrag || e.pointerId !== miniDrag.id) return;
+      if (e.buttons === 0) return; // hover 移动不参与 seek（避免 pointerup 丢失后把进度打到边缘）
+      if (e.cancelable) e.preventDefault();
+      seekToRatio(miniRatio(e.clientX));
+    }, true);
+    document.addEventListener('pointerup', function (e) {
+      if (!miniDrag || e.pointerId !== miniDrag.id) return;
+      seekToRatio(miniRatio(e.clientX));
+      if (mini && mini.bar) {
+        try { if (mini.bar.hasPointerCapture && mini.bar.hasPointerCapture(e.pointerId)) mini.bar.releasePointerCapture(e.pointerId); } catch (err) {}
+      }
+      miniDrag = null;
+    }, true);
+    document.addEventListener('pointercancel', function (e) {
+      if (!miniDrag || e.pointerId !== miniDrag.id) return;
+      miniDrag = null;
+    }, true);
+    // 窗口失焦兜底，避免拖动状态卡住
+    window.addEventListener('blur', function () { miniDrag = null; });
+  }
+
   function buildMini() {
     var content = document.getElementById('music-drawer__content');
     if (!content) return null;
@@ -216,13 +281,20 @@
       if (act === 'toggle') { e.preventDefault(); toggle(); return; }
       if (act === 'prev') { e.preventDefault(); play(index - 1); return; }
       if (act === 'next') { e.preventDefault(); play(index + 1); return; }
-      if (act === 'seek') {
-        e.preventDefault();
-        var rect = mini.bar.getBoundingClientRect();
-        var ratio = rect.width ? (e.clientX - rect.left) / rect.width : 0;
-        var dur = audio && isFinite(audio.duration) ? audio.duration : 0;
-        if (dur > 0) seek(ratio * dur);
-      }
+      // seek 分支已删除：迷你条改为 pointerdown/move/up 驱动（click 由拖动补发，不能再按坐标 seek，
+      // 否则键盘/辅助技术触发的 click（clientX=0）会把进度打到 0）
+    });
+
+    bindMiniDrag();
+    mini.bar.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      var rect = mini.bar.getBoundingClientRect();
+      // 布局未就绪（宽 0 / NaN）时不接这次按下，避免 ratio 落成 0
+      if (!rect || !isFinite(rect.left) || !isFinite(rect.width) || rect.width <= 0) return;
+      miniDrag = { id: e.pointerId, rect: rect };
+      try { mini.bar.setPointerCapture(e.pointerId); } catch (err) {}
+      if (e.cancelable) e.preventDefault();
+      seekToRatio(miniRatio(e.clientX));
     });
 
     renderMini();
@@ -274,6 +346,8 @@
     next: function () { play(index + 1); },
     prev: function () { play(index - 1); },
     seek: seek,
+    seekToRatio: seekToRatio,
+    canSeek: canSeek,
     mount: mount,
     unmount: unmount,
     subscribe: subscribe,

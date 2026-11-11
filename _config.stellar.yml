@@ -1306,10 +1306,22 @@ inject:
       }
 
       .site-mini__bar {
+        position: relative;
         height: 4px;
         border-radius: var(--radius-micro);
         background: var(--white-16);
         cursor: pointer;
+        touch-action: none;
+      }
+
+      /* 4px 的线做拖动目标太细：向上/下各扩 4px 命中区（不改变布局高度） */
+      .site-mini__bar::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: -4px;
+        bottom: -4px;
       }
 
       .site-mini__played {

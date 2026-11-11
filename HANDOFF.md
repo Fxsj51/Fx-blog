@@ -446,4 +446,35 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 - JS 异常：音乐页脚本 0 异常。SPA 测试期间出现过 1 条主题右栏「农历库」异常（`Cannot set properties of null (setting 'innerHTML')` at `/`），已用旧构建（`58df337`）复现同样错误，属既有 CDN 失败竞态，与本次改动无关。
 - `npm run build` 通过，断点校验通过（1180/1181、900/901 与注入 JS、patches 一致）。
 
+### 第五批（2026-11-11）：进度条「拖动归 0」根因与加固
+
+**实测复现的根因**（不再是「自动化测试通过」的推断）：本地 `hexo server` 不支持 HTTP Range，`/music/audio/*.mp3` 的 Range 请求回 200 全量且无 `Accept-Ranges`/`Content-Length`，浏览器里 `audio.seekable` 是零宽区间（`[0,0]`）。此时给 `audio.currentTime` 赋值会被吞掉并回读 0，`seeked` 也在 0，于是「拖到哪都归 0」；而代码算出的 ratio 完全正确（拖动序列 0.25/0.5/0.75）。同一份产物换用 `static-server.js`（支持 206）不复现——这就是「用户环境复现、测试环境不复现」的来源。
+
+**加固**（不依赖坐标假设）：
+
+- `pointerdown` 时快照轨道 `rect`（left/width），整段拖动复用，`pointermove` 不再每帧重取；布局变化（时间文本、译文行、滚动条）不会让 rect 抖动。
+- `rect.width <= 0`、`NaN`、`Infinity`、`clientX` 非法、`duration` 非有限时一律放弃本次 seek，绝不落到 0。
+- 新增 `SitePlayer.canSeek()`（`duration>0` 且 `seekable` 存在非零宽区间）；不可 seek时不画目标位置、不 seek、只 `warn` 一次，避免「拖到 50% 又归 0」的假象。
+- 当前/总时长文本固定 `min-width: 5ch` + `tabular-nums`，消除拖动中的横向重排。
+- `pointerup` 后 250ms 内不允许 `timeupdate` 回写进度，等 seeked/timeupdate 同步真实位置。
+- hover 帧（`buttons=0`）不参与 seek，避免 pointerup 丢失后残留移动把进度打到边缘。
+- 侧栏迷你条：删除 `click` 里的按坐标 seek（键盘/辅助技术的 `clientX=0` 会 seek(0)），改为 pointerdown/move/up 真拖动，与音乐页共用 `seekToRatio`/`canSeek`，同样快照 rect、非法值放弃。
+
+**修复后实测**（`:4001` 服务 `public`，有头 Edge + CDP）：
+
+- 1440 直接入口（dur 293.827，轨道 645.7/195.7）：25% 期望 73.457 → 73.608（diff 0.152）；50% 146.913 → 147.082（0.169）；75% 220.37 → 220.537（0.167）。
+- 暂停态拖 50%：146.913 → 146.913（diff 0），1 秒后仍 146.913、`paused=true`、回弹 0。
+- 375（轨道 57.6/260）：鼠标拖 50% diff 0.171；合成触摸拖 75% diff 0.148；`scrollWidth == clientWidth`（375）。
+- 首页 → SPA 进入 `/music/`：拖 50% 146.913 → 147.051（diff 0.137）；歌词 64 行 / 38 译文。
+- 两端外再拖回 75%：落点 220.713（期望 220.713，diff 0）。
+- 缩放：dsf1.25、dsf1.5、浏览器 zoom 110%、125% 用合成 PointerEvent（clientX 取自同一时刻 rect），diff 分别 0.067 / 0.068 / 0.088 / 0.058。CDP 输入在这些缩放下偶发不送达，故只验证应用层坐标数学与落点。
+- 迷你条（右栏 1187/196.8）：合成拖 30% diff 0.082、50% diff 0.107；真实鼠标 50% diff 0.144、30% diff 0.149；`bar.click()`（clientX=0）不再 seek(0)。
+
+**未完全覆盖 / 推断**：dsf1.5 与浏览器 zoom 档的 CDP 输入映射不可靠，改用合成事件；旧产物已排除（`:4001` 返回的 `js/music-page.js` 与磁盘产物 hash 一致）。
+
+**回归**：Billie Jean 歌词 64 行/38 译文；seek 20%/60%/90% 高亮行与按 LRC 独立计算的期望行一致（6/36/56）；`strayZh=0`；全页 1 个 `<audio>`；音乐页 0 异常（唯一异常是首页右栏「农历库」兜底的既有竞态，与本次无关）；构建与断点校验通过。
+
+**附带**：用户替换了 Billie Jean 音频（新文件落盘时带 `(1)` 后缀），已规范回 `michael+jackson-billie+jean.mp3`，`playlist.yml` 路径不变；旧同名文件已被覆盖。
+
+
 
