@@ -70,23 +70,26 @@ rightbar:
   -webkit-backdrop-filter: var(--music-card-blur);
   backdrop-filter: var(--music-card-blur);
 }
-/* 黑胶：盘身直接用 CP-disc.webp（整圆、带纹路与中心孔），封面缩小叠在正中当圆形 label。
-   该图四周有 12.5% 透明留白、外径占画布 75%，故放大到 133.33% 让盘缘刚好填满 120px；
-   中心透明孔约 49%，label 取 52% 恰好盖住并略压边缘。 */
+/* 黑胶：盘身用按 alpha 包围盒裁紧的 CP-disc-cropped.webp（正圆、无透明留白），1:1 铺满容器。
+   容器只负责圆形裁切，不垫底色、不加外阴影，避免盘缘出现一圈深色/方角。 */
 .music-now__disc {
   position: relative; flex: 0 0 auto; width: 120px; height: 120px; border-radius: 50%;
   overflow: hidden;
-  background: url(../images/CP-disc.webp) center / 133.33% 133.33% no-repeat;
-  background-color: #0b0b0c;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, .32);
+  background: url(../images/CP-disc-cropped.webp) center / 100% 100% no-repeat;
   animation: music-rotate 20s linear infinite; animation-play-state: paused;
 }
 .music-now__disc.is-playing { animation-play-state: running; }
+/* 未选曲时中心孔兜底：只垫一块与盘面同色的圆标大小圆，不用整块深色背景 */
+.music-now__disc::before {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 52%; height: 52%;
+  transform: translate(-50%, -50%); border-radius: 50%; background: #070708;
+}
 .music-now__disc img {
   position: absolute; left: 50%; top: 50%; width: 52%; height: 52%;
   transform: translate(-50%, -50%);
-  border-radius: 50%; object-fit: cover; display: block;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, .55), 0 0 6px rgba(0, 0, 0, .45);
+  /* 圆标双重裁切：border-radius 不够稳，旋转/合成的任意角度下可能露出方角，再叠 clip-path 兜住 */
+  border-radius: 50%; clip-path: circle(closest-side);
+  object-fit: cover; display: block;
 }
 /* 未选曲目时无封面：只显示盘身与中心孔 */
 .music-now__disc img:not([src]) { visibility: hidden; }

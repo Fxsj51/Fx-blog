@@ -1238,9 +1238,9 @@ inject:
         color: var(--text-primary);
       }
 
-      /* 首页抽屉黑胶：小尺寸专用（76px）。盘身用 CP-disc.webp（同音乐页素材），
-         按其透明留白与中心孔比例放大到 133.33%；圆标单独取 53%（比音乐页略大），
-         避免 76px 下孔沿抗锯齿露白，同时不压住外圈纹路。 */
+      /* 首页抽屉黑胶：小尺寸专用（76px）。盘身用与音乐页同一张裁紧素材，1:1 铺满；
+         只做圆形裁切，不垫底色、不加外阴影，避免盘缘出现深色环；
+         圆标单独取 53%（比音乐页略大），压住孔沿又不吃掉外圈纹路。 */
       .site-mini__disc {
         position: relative;
         flex: 0 0 auto;
@@ -1251,15 +1251,26 @@ inject:
         border-radius: var(--radius-circle);
         cursor: pointer;
         overflow: hidden;
-        background: url(__SITE_ROOT__images/CP-disc.webp) center / 133.33% 133.33% no-repeat;
-        background-color: #0b0b0c;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, .34);
+        background: url(__SITE_ROOT__images/CP-disc-cropped.webp) center / 100% 100% no-repeat;
         animation: site-mini-spin var(--spin-dur) linear infinite;
         animation-play-state: paused;
       }
 
       .site-mini.is-playing .site-mini__disc {
         animation-play-state: running;
+      }
+
+      /* 未选曲时中心孔兜底 */
+      .site-mini__disc::before {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 53%;
+        height: 53%;
+        transform: translate(-50%, -50%);
+        border-radius: var(--radius-circle);
+        background: #070708;
       }
 
       .site-mini__cover {
@@ -1269,9 +1280,9 @@ inject:
         width: 53%;
         height: 53%;
         border-radius: var(--radius-circle);
+        clip-path: circle(closest-side);
         object-fit: cover;
         transform: translate(-50%, -50%);
-        box-shadow: 0 0 0 1px rgba(0, 0, 0, .5);
       }
 
       /* 中心小孔 */
