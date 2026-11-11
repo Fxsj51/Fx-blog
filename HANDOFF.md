@@ -549,3 +549,6 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 - 布局 1440 `scrollWidth==clientWidth==1432`、375 `375==375`；全页 1 个 `<audio>`；首页→音乐页→首页→音乐页往返后仍是 64/34。
 - 音乐页 0 JS 异常；首页仍有 2 次 `Cannot set properties of null (setting 'innerHTML')`（右侧栏农历 CDN 回退，第六批前已存在，与音乐页无关）。
 
+**放宽匹配（同日补充）**：按用户授权，只放开三类等价写法——①省略/缩写（`bein'`↔`being`、`cryin'`↔`crying`、`breakin'`↔`breaking`、`'til`/`till`↔`until`、`'cause`↔`because`、`o'`↔`of`，按撇号判定后统一词形）；②数字与数词（`40`↔`forty`、`3:00`↔`three`）；③单个虚词差异（冠词 `a/an/the` 组内、介词 `in/on/to/into/at/for/with/from/by/of` 组内，其余 token 全同）。纯拟声/感叹、纯括号注释、以及任何需改实词的差异一律不放开。匹配顺序为两遍：先全量精确并固定结果，再在全局剩余序列上做放宽对齐，每条译文只用一次；精确阶段与提交前文件逐字节一致（Billie 34、Come 49、That's The Way 27）。放宽后有译文行数：Billie **34→39（+5）**、Come 49→49（0）、That's The Way 27→27（0）；新增 5 条均为省略/数字类，另有一条同时命中「省略+数字」。无「仅靠虚词微差」而新增的行。构建、断点校验与 41/41 项验证通过（含 3 条新增行真实播放抽查）。
+
+
