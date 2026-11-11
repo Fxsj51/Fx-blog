@@ -490,5 +490,40 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 
 实测：mp3 `bytes=1000-1999` → 206/`Content-Range: bytes 1000-1999/11868491`/`Content-Length: 1000`；`bytes=-500` → 206 末尾 500 字节；`bytes=999999999-` → 416；`/music/` 中 `seekable=[0,293.827]`，拖 50% 期望 146.913、落点 147.038（diff 0.125）。
 
+### 第六批（2026-11-11）：歌词/译文复核与时间轴结论
 
+**数据来源**：用户提供的三份带时间轴 LRC 与双语对照（Billie Jean 99 条/72 带译，Come 61/56，That's The Way It Is 30/30），原样保存在工作区 `b-lrc-*.txt`、`b-lyrics-*.txt`，不进入仓库。仓库只改 3 个 `.zh.lrc` 与 `playlist.yml` 的 credits。
 
+**时间轴（实测）**：
+
+- Billie Jean：本地音频 11251 帧（Xing 声明 11250），帧时长 293.904s，解码 293.827s。贴来末行 4:49.02=289.02s，与文件时长相差 +4.807s，超出「±1.5s 内直接采用」的门槛。实测 `lastAudible(-35dB)=289.30s`，尾部静默 4.53s(-35dB)/2.95s(-50dB)，说明 4:49.03 之后是片尾淡出与近静音，不是时间轴漂移。→ **保留现有时间轴，不做偏移**。贴来时间轴与现有时间轴在 33 个唯一锚点上逐行差 median +0.02s、mean +0.009s、sd 0.039s、范围 -0.07~+0.07s（重复 chorus 不参与配对），两者等价。
+- Come And Get Your Love：7975 帧（Xing 7974），帧时长 208.327s，解码 208.253s；`tailZeroSamples=0`（不是数字零样本），`lastAudible(-50dB)=204.40s`、`(-35dB)=203.34s`，尾部静默 3.85/4.91s。→ **不是截断、也不是声明帧数虚报**，音频在 ~3:24.4 自然结束，3:23.03–3:28.10 的尾部歌词落在淡出/近静音区（实际不可闻）。→ **不采用贴来时间轴，保留现有时间轴**。贴来 vs 现有在 12 个唯一锚点上的差为 median -0.175s、mean -0.152s、sd 0.358s、范围 -0.69~+0.79s；常数模型最大残差 0.965s，线性拟合 slope 0.00547、intercept -0.431、残差 sd 0.318s，残差接近 1s，不能用一个常数偏移「校正」。
+- 能量包络锚点（Web Audio `decodeAudioData` + 20ms RMS，起音强度 `max(0, rms[i]-rms[i-2])`）每首 8 个：Billie drift median -0.19s、mean -0.336s、sd 0.56s、min -1.19s、max +0.79s（287.43s 的末锚点强度仅 0.101，按不可靠剔除，不影响结论）；Come median -0.32s、mean -0.288s、sd 0.503s、min -1.16s、max +0.34s。两首都没有稳定的常数/线性漂移，故统一保留现有时间轴，贴来版本只用于文本与译文。
+
+**译文挂载规则**：NFKC、弯直引号统一、去括号注释、去标点、连续重复字母收敛（`looove`→`love`）、小写、空白归一后做**保序 LCS**；锚点之间的缺口用局部 DP 允许两侧跳过、2~3 条贴文并成 1 行、1 条贴文拆成 2~3 行（译文挂到该段第一行的现有时间戳）。只采用精确相等（含上述归一）的配对；相似度 ≥0.85 但非精确相等的列为「相近但未采用」，不并入成功数、不硬配；未命中保持无译文，不机翻、不按行号对齐。
+
+**匹配结果（实测）**：
+
+- Billie Jean：LRC 64 文本行 / 贴来 99 条（72 带译）→ 39 行成对、其中 35 行有译文；13 条相近未采用（0.897–0.984，如 `bein'/being` 0.984、`cryin'/crying` 0.983、`till three/til 3:00` 0.902、`uh/ooh` 尾注 0.897–0.911）；29 行仍无译文（多为拟声/重复行，或转写差异如 `40 days` vs `forty days`、`I was on her side` vs `the law was on her side`）；4 行成对但贴文本身无译文。落盘 35 行。
+- Come And Get Your Love：71 / 61（56 带译）→ 49 行成对、49 行有译文；22 行仍无译文（含 4 句 intro、`'Cause you're fine`、两处 `Get it from the main vine` 等贴文未覆盖或重复结构不一致的行）；贴来但本地无 12 条。
+- That's The Way It Is：32 / 30 → 27 行成对、27 行有译文；5 行仍无译文（1:45.59 `heights/highs` 转写差异、1:51.42 `scar/this scar` 0.935 未采用、3 条纯括号行）；贴来但本地无 3 条。
+- 旧 `.zh.lrc` 整体替换，不混入旧网易云译文，因此覆盖率由旧 38/50/29 变为 35/49/27；缺口就是上列「未命中」行。
+
+**署名比对（贴来 vs 原 credits）**：
+
+| 曲目 | 字段 | 原值 | 贴来值 | 采用 |
+| --- | --- | --- | --- | --- |
+| Billie Jean | lyricist / composer | Michael Jackson | Michael J. Jackson | 贴来值（同一人的完整写法） |
+| Billie Jean | arranger | Michael Jackson | Michael Jackson | 一致，不变 |
+| Come And Get Your Love | lyricist | Lolly Vegas | Lolly Vegas/Pat Vegas | 贴来值（补上共同作词者） |
+| Come And Get Your Love | composer | Lolly Vegas | Lolly Vegas | 一致，不变 |
+| That's The Way It Is | composer | Daniel Lanois/Rocco Deluca | 无署名 | 保留原值 |
+
+**验证（构建后 `npm run preview` :4173，有头 Edge + CDP，35/35 PASS）**：
+
+- `npm run build` 通过，断点校验通过（1180/1181、900/901 与注入 JS、patches 一致）。
+- DOM 行数/译文数：Billie 64/35、Come 71/49、That's The Way 32/27；每行原文与译文都和文件逐字一致，`strayZh=0`，无空译文。
+- seek（暂停态精确落点）：Billie 20% 58.765s→index 6（该行属于相近未采用，无译文）、60% 176.296s→36（同上）、90% 264.444s→56（译文「她说他是我的骨肉」）；Come 20% 41.651s→13（`'Cause you're fine`，无译文）、60% 124.952s→35（「勇敢地来争取你的爱吧」）、90% 187.428s→54（无译文）；That's The Way 20% 49.613s→3（「也难逃一劫」）、60% 148.84s→20（「人生，大概也如此吧」）、90% 223.26s→25（「就是这样吧（这世间辛酸痛苦啊）」）。高亮行与按 LRC 独立计算的期望行全部一致，有译文的行译文随行显示。
+- 布局：1440 `scrollWidth==clientWidth==1432`、375 `375==375`；全页始终 1 个 `<audio>`；音乐页 0 JS 异常（本次连首页也没有异常）。
+- 换页：首页 → SPA `/music/`（真实鼠标命中链接，`window` 标记保留）→ 播放 Billie 64/35；再回首页、再进音乐页，仍 64/35 且 1 个 audio。
+- 音频文件未变化：Billie/Come 的 mp3 blob hash 与 `HEAD` 一致（`341b078`/`12bfff3`），`playlist.yml` 的音频路径与 `.lrc`/`.zh.lrc` 基名一致，无孤儿歌词文件。

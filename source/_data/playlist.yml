@@ -41,8 +41,8 @@
   license: 本地曲目
   zhlrc: "music/lrc/michael+jackson-billie+jean.zh.lrc"
   credits:
-    lyricist: "Michael Jackson"
-    composer: "Michael Jackson"
+    lyricist: "Michael J. Jackson"
+    composer: "Michael J. Jackson"
     arranger: "Michael Jackson"
     album: "Thriller"
 
@@ -53,7 +53,7 @@
   license: 本地曲目
   zhlrc: "music/lrc/redbone-come+and+get+your+love.zh.lrc"
   credits:
-    lyricist: "Lolly Vegas"
+    lyricist: "Lolly Vegas/Pat Vegas"
     composer: "Lolly Vegas"
     album: "Guardians of the Galaxy (Deluxe)"
 
