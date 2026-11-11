@@ -30,6 +30,7 @@
 - title: 14.3 Billion Years
   artist: Andrew Prahlow
   audio: "music/audio/14.3+Billion+Years-Andrew+Prahlow.mp3"
+  cover: "music/covers/14.3-billion-years.webp"
   license: 本地曲目
   credits:
     album: "Outer Wilds - Original Soundtrack"
@@ -37,6 +38,7 @@
 - title: Billie Jean
   artist: Michael Jackson
   audio: "music/audio/michael+jackson-billie+jean.mp3"
+  cover: "music/covers/billie-jean.webp"
   lrc: "music/lrc/michael+jackson-billie+jean.lrc"
   license: 本地曲目
   zhlrc: "music/lrc/michael+jackson-billie+jean.zh.lrc"
@@ -49,6 +51,7 @@
 - title: Come And Get Your Love
   artist: Redbone
   audio: "music/audio/redbone-come+and+get+your+love.mp3"
+  cover: "music/covers/come-and-get-your-love.webp"
   lrc: "music/lrc/redbone-come+and+get+your+love.lrc"
   license: 本地曲目
   zhlrc: "music/lrc/redbone-come+and+get+your+love.zh.lrc"
@@ -60,6 +63,7 @@
 - title: That's The Way It Is
   artist: Daniel Lanois
   audio: "music/audio/That's The Way It Is (Single Version)-Daniel Lanois.mp3"
+  cover: "music/covers/thats-the-way-it-is.webp"
   lrc: "music/lrc/That's The Way It Is (Single Version)-Daniel Lanois.lrc"
   license: 本地曲目
   zhlrc: "music/lrc/That's The Way It Is (Single Version)-Daniel Lanois.zh.lrc"
@@ -70,6 +74,7 @@
 - title: 海阔天空
   artist: BEYOND
   audio: "music/audio/海阔天空-BEYOND(2).mp3"
+  cover: "music/covers/haikuotiankong.webp"
   lrc: "music/lrc/海阔天空-BEYOND(2).lrc"
   license: 本地曲目
   credits:

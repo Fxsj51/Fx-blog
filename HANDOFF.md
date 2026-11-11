@@ -585,5 +585,32 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 
 **踩坑**：构建前有遗留的 `hexo server` 进程占用 `db.json`，导致 `hexo clean` 报 `EPERM: unlink 'D:\Fx-blog\db.json'`。结束该进程后重建通过；`npm run preview` 不受影响。
 
+### 第九批（2026-11-11）：音乐页五首曲目封面
+
+**数据**：用户把 5 张 500×500 原图放进 `source/music/covers/`（Billie Jean.png / Come And Get Your Love.jpg / That's The Way It Is.jpg / 海阔天空.jpg / 14.3 Billion Years.jpg，合计约 577KB）。原图保留在本地目录但**不纳入版本控制**；仓库只提交页面实际引用的 webp。
+
+**产物（同目录，统一 ASCII slug，避免空格/中文/撇号编码问题）**：
+
+| 曲目 | 文件 | 体积 |
+| --- | --- | --- |
+| 14.3 Billion Years | `14.3-billion-years.webp` | 30.3KB |
+| Billie Jean | `billie-jean.webp` | 24.6KB |
+| Come And Get Your Love | `come-and-get-your-love.webp` | 39.8KB |
+| That's The Way It Is | `thats-the-way-it-is.webp` | 43.7KB |
+| 海阔天空 | `haikuotiankong.webp` | 21.0KB |
+
+规格：原尺寸不放大，500×500，`sharp` 转 webp quality 82、effort 5；合计 159.4KB。`playlist.yml` 5 首各加 `cover:`（相对路径 `music/covers/xxx.webp`），第 5 首同样接入。**未改任何模板/JS**：`scripts/playlist.js` 的 `resolveUrl` 注入 `data-cover`，列表卡、当前曲目唱片图、右栏迷你条本来就统一读 `track.cover`，缺省仍回落到 `images/CP-disc.webp`。
+
+**验证（构建后 `npm run preview` :4173，有头 Edge + CDP，26/26 PASS）**：
+
+- `npm run build` 通过，断点校验通过（1180/1181、900/901 与注入 JS、patches 一致）。
+- 5 首逐一切歌：列表 40px 封面、当前曲目唱片图（方形、`object-fit:cover`、圆形裁切）、右栏迷你条封面均与曲名一一对应；唱片图自然宽 500。
+- 封面请求全部 200，无 404（含 `That's`/中文/空格文件名均由 ASCII slug 规避）；列表封面 `loading=lazy`，唱片图与迷你条按需加载。
+- 1440 `1432==1432`、375 `375==375` 无横向溢出；375 下列表封面 34px 不变形；全页 1 个 `<audio>`。
+- SPA：播放海阔天空 → 首页迷你条封面/曲名正确且只取 1 张图 → 返回音乐页 5 张封面全对；整轮往返每张封面恰好 2 次请求（各页渲染各 1 次），无同一渲染内的重复并发。
+- 音乐页脚本 0 异常；直接进入 `/music/` 0 异常。SPA 切入音乐页时仍会出现 1 条既有农历库 `innerHTML` TypeError（与本任务无关，保留原状）。
+- 备注：`source/_data/caches/images_metadata.json` 随构建新增 5 条封面元数据，一并提交；原图会被 Hexo 复制进 `public/music/covers/`（未加 ignore，仅构建产物，不入库）。
+
+
 
 

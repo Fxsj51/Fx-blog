@@ -39,6 +39,101 @@
         ]
       }
     },
+    "http://example.com/music/covers/14.3-billion-years.webp": {
+      "updatedAt": "2026-11-11T07:27:33.366Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 500,
+        "height": 500
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          167.1344,
+          8.8595,
+          12.9448,
+          1
+        ]
+      }
+    },
+    "http://example.com/music/covers/billie-jean.webp": {
+      "updatedAt": "2026-11-11T07:25:11.326Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 500,
+        "height": 500
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          52.7253,
+          3.3358,
+          44.3255,
+          1
+        ]
+      }
+    },
+    "http://example.com/music/covers/come-and-get-your-love.webp": {
+      "updatedAt": "2026-11-11T07:25:11.330Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 500,
+        "height": 500
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          30.9189,
+          29.8777,
+          49.3727,
+          1
+        ]
+      }
+    },
+    "http://example.com/music/covers/haikuotiankong.webp": {
+      "updatedAt": "2026-11-11T07:25:11.343Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 500,
+        "height": 500
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          353.4501,
+          5.5399,
+          81.7388,
+          1
+        ]
+      }
+    },
+    "http://example.com/music/covers/thats-the-way-it-is.webp": {
+      "updatedAt": "2026-11-11T07:25:11.333Z",
+      "dimensions": {
+        "status": "ready",
+        "width": 500,
+        "height": 500
+      },
+      "color": {
+        "status": "ready",
+        "algorithm": "hsla-mean-v1",
+        "size": 64,
+        "hsla": [
+          15.5358,
+          57.559,
+          37.0256,
+          1
+        ]
+      }
+    },
     "https://example.github.io/Fx-blog/images/CP-disc.webp": {
       "updatedAt": "2026-11-08T16:04:54.088Z",
       "dimensions": {
