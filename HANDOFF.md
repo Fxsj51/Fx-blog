@@ -1,7 +1,7 @@
 # HANDOFF — Fx-blog 交接文档
 
 > 本文件面向"下一轮接手的人/AI"。目标是：读完之后能在**不改坏站点**的前提下继续开发。
-> 最后更新：2026-11-11（第十八批：音乐页歌词区粘附 + 右缘留白）
+> 最后更新：2026-11-11（第十八批：音乐页右缘留白 + 左列收窄，歌词保持文档流）
 > 状态标记：**【实测】**= 本轮实际跑过/量过；**【推算】**= 按 CSS 公式推导，未在浏览器里量；**【未覆盖】**= 从没跑过。
 
 ---
@@ -187,20 +187,21 @@ off      = max(0, (V - sbw - 1720) / 2)     # 1720 = 340 + 1000 + 380
 
 | 视口 | off | 左栏 | 主栏 | 右栏内容 | 备注 |
 | --- | --- | --- | --- | --- | --- |
-| 1920 | 96 | 96–436 | 436–1436（1000） | 1421–1801【实测锚点】 | 音乐页歌词 1501–1801【实测锚点】 |
-| 1760 | 16 | 16–356 | 356–1356（1000） | 1341–1721【推算】 | 音乐页歌词 1421–1721【推算】 |
+| 1920 | 96 | 96–436 | 436–1436（1000） | 1421–1801【实测锚点】 | 音乐页歌词 1452–1752【实测锚点】（右栏右缘 −64） |
+| 1760 | 16 | 16–356 | 356–1356（1000） | 1341–1721【推算】 | 音乐页歌词 1357–1657【推算】 |
 | 1600 | 0 | 0–340 | 340–1212（872） | 1197–1577【推算】 | 已进入"主栏被压缩"区间 |
 | 1181–1599 | 0 | 0–340 | `V - sbw - 720`（1181→453，1366→638，1500→772） | 右缘贴视口，宽 380 | >1180 右栏常驻；音乐页为"上行通栏 + 下行歌单/歌词两列" |
 | ≤1180 | 0 | 0（抽屉） | `V - sbw`（1180→~1172） | 抽屉，`min(380, 85vw)` | `--rightbar-col-w: 0` |
 | ≤900 | 0 | 抽屉 | `V - sbw`，`padding: 80px 20px 160px` | 抽屉 | 左栏抽屉 + `#mobile-brand-bar` |
 
-> 2560 的实测锚点（来自 `source/music/index.md` 注释）：首页右栏 1741–2121，歌词 1821–2121。
+> 2560 的实测锚点（来自 `source/music/index.md` 注释）：首页右栏 1756–2136，歌词 1772–2072。
 > 上表除标注"实测锚点"外均为**按公式推算**，本轮没有可用的浏览器测量脚本（见 §11）。
 
 ### 7.3 音乐页（歌单 / 歌词）横向范围
 
-- `≥1600`：`grid: 888px | 1fr | 300px`；歌词列 `300px` 固定，右缘与首页右栏右缘重合，歌词顶部与「当前曲目」卡片齐平。
-- `1181–1599`：第 1 行「当前曲目」通栏；第 2 行「歌单列 + 16px + 300px 歌词列」，歌词右缘 = 主栏右缘。
+- `≥1600`：`grid: 824px | 1fr | 300px`，`.music-page` 加 `padding-right:64px`；歌词列 `300px` 固定，右缘 = 首页右栏右缘 −64px，歌词顶部与「当前曲目」卡片齐平。
+- `1420–1599`：卡片进左列，歌词列 `grid-row:1 / span 2`（列高由左列内容自然撑高）；歌词右缘 = 主栏右缘 −64px。
+- `1181–1419`：第 1 行「当前曲目」通栏；第 2 行「歌单列 + 16px + 300px 歌词列」，歌词右缘 = 主栏右缘 −64px。
 - `≤1180`：整页纵向堆叠（当前曲目 → 歌单 → 歌词），歌词高度 300px。
 - `≤600`：当前曲目卡片改为纵向，唱片 88px。
 
@@ -208,9 +209,9 @@ off      = max(0, (V - sbw - 1720) / 2)     # 1720 = 340 + 1000 + 380
 
 任何改动后必须满足：
 
-1. `document.documentElement.scrollWidth === document.documentElement.clientWidth`（含音乐页、首页、文章页、about）——横向溢出会破坏 `sticky` 与右缘对齐。
+1. `document.documentElement.scrollWidth === document.documentElement.clientWidth`（含音乐页、首页、文章页、about）——横向溢出会破坏右缘对齐。
 2. 切页（首页 ↔ 关于 ↔ 音乐）时左栏不横向位移，主栏左缘不变。
-3. 音乐页歌词右缘在 1920 下仍是 1801，在 2560 下仍是 2121（±1px 容差）。
+3. 音乐页歌词右缘在 1920 下仍是 1752，在 2560 下仍是 2072（±1px 容差）。
 
 ---
 
@@ -767,26 +768,30 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 
 **验证【实测】**：`npm run build` 通过 + `[breakpoints] 断点校验通过`；`verify-loop-vol.js` 23/23 PASS——三态切换/曲终行为/持久化/键盘空格切换/刷新与 SPA 往返、单曲态 SVG 路径与「1」符合同一字符串断言、列表与不循环路径逐字节等于旧值；1440 与 375 控件行 `scrollWidth===clientWidth`、音量浮层展开不挤动、全页 1 个 `<audio>`、无 JS 报错。截图（工作区，不入库）：`shots\loop-side-by-side.png`（左参照右新图标）、`shots\loop-overlay.png`、`shots\loop-new-8x.png`、`shots\loop-icon-list-zoom.png`、`shots\loop-icon-one-zoom.png`、`shots\loop-icon-off-zoom.png`、`shots\loop-vol-1440-closed.png`、`shots\loop-vol-375-closed.png`。
 
-### 第十八批（2026-11-11）：音乐页歌词区粘附 + 右缘留白
+### 第十八批（2026-11-11）：音乐页右缘留白 + 左列收窄（歌词保持文档流）
 
-**只动 `source/music/index.md` 末尾的内联 CSS**，HTML 结构与 `music-page.js` 未动。
+**改动文件**：`source/music/index.md` 末尾内联 CSS、`source/js/music-page.js`（删除上一版试做的固定定位逻辑后无净改动）。
 
-**布局现状**：1181–1599 是「当前曲卡片通栏 + 下一行歌单/300px 歌词」；≥1600 才是「左列卡片+歌单 / 右列歌词」并已 sticky；≤1180 单列。
+**最终口径**：歌词面板不做任何粘附/固定，和其它正文一样待在文档流里、随页面一起滚；`height:452px` 只是面板自身的设计尺寸，内部 `#music-lyrics-scroll` 负责滚动歌词。
 
 **改法**：
-- `@media (min-width:1181px)` 的 `.music-page` 加 `padding-right:64px`：1fr 左列自动收窄 64px（卡片 888→824、歌单同步变窄），歌词右缘也从内容右缘内缩 64px，不再顶到右缘。歌词列宽仍固定 300px，所以行宽/换行/字号/行高均不变。
-- 新增 `@media (min-width:1420px) and (max-width:1599px)`：`.music-now` 回到列 1、`.music-lyrics-dock` 改成 `grid-row:1 / span 2`、`.music-lyrics` 恢复 `position:sticky; top:16px`。原因有两条：① 歌词必须在第 1 行起步，滚动到顶时面板才整块落在视口内（原来在卡片下方，首屏底部就出界 78px）；② sticky 的容器必须比面板高才有行程，原来歌词单独在第 2 行、容器 454px ≈ 面板 452px，粘附行程只有 2px，等于没生效。1420 是「卡片进左列后控制行不溢出」的最小宽度：左列需 ≥480（图标/时长/滑块最小宽合计 ~303 + 内边距 40 + 碟片 120 + 间距 20），实测 1420 左列 508、1440 左列 508，控制行最小 303 不换行。
-- 1181–1419 左列只有 341–470px，控制行放不下，**保持原「卡片通栏 + 下一行歌单/歌词」且歌词 static**（只受 padding 影响变窄）；≤1180 完全未动（单列、歌词 300px static）。
-- ≥1600：左列 `888px`→`824px`，padding 由 1181+ 基底继承；1fr 中间列吸收 64px，右缘对齐公式不变。实测 1920 首页右栏 1436–1816 / 歌词 1452–1752，2560 右栏 1756–2136 / 歌词 1772–2072，即歌词右缘恒为右栏右缘 −64px。
+- `@media (min-width:1181px)` 的 `.music-page` 加 `padding-right:64px`：1fr 左列自动收窄 64px（1440 卡片/歌单 572→508），歌词右缘也从内容右缘内缩 64px，不再顶到右缘；歌词列宽仍固定 300px，行宽/换行/字号/行高均不变。
+- 新增 `@media (min-width:1420px) and (max-width:1599px)`：`.music-now` 列 1 行 1、`.music-body` 列 1 行 2、`.music-lyrics-dock` 列 3 且 `grid-row:1 / span 2`——歌词列高由左列（卡片+歌单）内容自然撑高。1420 是「卡片进左列后控制行不溢出」的最小宽度（左列需 ≥480，实测 1420/1440 左列 508，控制行最小 303 不换行）。
+- `1181–1419` 左列只有 341–470px，控制行放不下，保持「卡片通栏 + 下一行歌单/歌词」；`≤1180` 完全未动（单列、歌词 300px）。
+- `≥1600` 左列 `888px`→`824px`，总列宽 = 824 + 1fr + 300 + 64 padding，右缘对齐公式不变。实测 1920 右栏 1436–1816 / 歌词 1452–1752；2560 右栏 1756–2136 / 歌词 1772–2072，即歌词右缘恒为右栏右缘 −64px。
+- **移除**（上一版遗留，全部清掉）：`.music-lyrics` 基础规则与 `≥1420`/`≥1600` 覆盖里的 `position:sticky; top:16px`、`.music-lyrics.is-fixed{position:fixed}` 及其注释、`1181–1599`/`≤1180` 的 `position:static` 覆盖；`music-page.js` 的 `lyricsDock/lyricsPanel`、`LYRICS_H/layoutLyrics`、订阅回调里的调用、`resize` 监听与 cleanup 中的移除、末尾调用。全文件 grep 确认无 `position: sticky|fixed` / `is-fixed` 残留（仅注释里说明"没有 sticky/fixed"）。
 
-**字号/行高【实测，改前 vs 改后】**（CDP `getComputedStyle`，两侧一致）：
+**字号/行高【实测，与改前完全一致】**（CDP `getComputedStyle`）：
 - 1440：原文 16px / 24.8px、译文 12px / 18px / opacity .62、行 padding `7px 0 7px 12px`、左边框 2px；当前行 600 / `rgb(29,185,84)` / `rgba(29,185,84,.1)` / opacity 1。
-- 375：原文 17px / 26.35px（主题移动端字号），其余同 1440。
-- 注：`.lyric-line` 的 14px 会被主题 `.md-text p` 覆盖成 16px，这是改前就存在的计算值，未动。
+- 375：原文 17px / 26.35px，其余同 1440。
+- `.lyric-line` 的 14px 被主题 `.md-text p` 覆盖为 16px，是改前既有的计算值，未动。
 
-**验证【实测】**：`npm run build` 通过 + `[breakpoints] 断点校验通过（1180/1181、900/901…）`；`verify-layout18.js` 21/21 PASS——1440 卡片/歌单均 508（<572）、歌词 300×452 `sticky`、`padding-right:64px` 且 `pageRight-歌词右缘=64`；滚顶(0)/中(320)/内容底(566) 歌词 top 分别 240/16/16、始终完整在 900 视口内、与 `.music-ctl` 矩形无交集；歌词内层 `#music-lyrics-scroll` 可自滚；SPA 首页↔音乐页往返后 sticky 重建、无内联残留；1440 与 375 `scrollWidth===clientWidth`；375 单列 `display:flex` + 歌词 static、99 行歌词可读；全页 1 个 `<audio>`；无 JS 异常/console.error。断点扫描 1180/1181、900/901、1419/1420、1600 均无横向溢出。
-- 取舍：sticky 的容器边界就是音乐内容底，再往下是站点页脚，面板会随容器一起释放（标准 sticky 行为）；1440 文档 maxScroll=643，面板完整可见的最大滚动位是 566，故"底"截图取 566。
-- 截图（工作区，不入库）：`shots\layout18-1440-top.png`、`shots\layout18-1440-mid.png`、`shots\layout18-1440-bottom.png`、`shots\layout18-1440-spa-return.png`、`shots\layout18-375-full.png`、`shots\layout18-375-lyrics.png`。
+**验证【实测】**：`npm run build` 通过 + `[breakpoints] 断点校验通过（1180/1181、900/901…）`；`verify-static18.js` **31/31 PASS**：
+- 1440：`position:static`；歌词 300×452（920–1220），右缘留白 64（pageRight 1284）；卡片/歌单 508；两列时歌词顶与卡片顶均为 240；滚动 0/300/643 时面板 top 240/−60/−403（Δtop 恒等于滚动量）、高度恒 452；`body.scrollHeight === document.scrollHeight`（无双层页面滚动）；歌词内层滚动条 `scrollbar-width:none`。
+- 1920：static；右缘留白 64（1816−1752）；三处 top 240/−60/−196、高度恒 452。
+- 1180：单列，歌词与卡片同宽 720；1181：两列，歌词 300 宽、在卡片下一行（553.6 > 537.6）；两档 `scrollWidth===clientWidth`。
+- SPA 首页↔音乐页往返后歌词 static 重建、全页 1 个 `<audio>`；375：static/300 高、17px/26.35px、滚到底面板随文档上移（1309→−31）；全程无 JS 异常/console.error。
+- 截图（工作区，不入库）：`shots\static18-1440-{top,mid,bottom}.png`、`shots\static18-1920-{top,mid,bottom}.png`、`shots\static18-1180.png`、`shots\static18-1181.png`、`shots\static18-1440-spa-return.png`、`shots\static18-375-full.png`、`shots\static18-375-bottom.png`。
 
 
 
