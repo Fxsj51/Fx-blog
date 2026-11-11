@@ -9,6 +9,7 @@
   var HOST_ID = 'site-audio-host';
   // 与左栏折叠状态的存储命名保持一致
   var LOOP_KEY = 'stellar:v2:player-loop-mode';
+  var VOLUME_KEY = 'stellar:v2:player-volume';
   var ICON_PREV = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>';
   var ICON_NEXT = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 5h2v14h-2zM4 5l11 7-11 7z"/></svg>';
   var ICON_PLAY = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 5l12 7-12 7z"/></svg>';
@@ -22,6 +23,8 @@
   var mini = null;
   // 循环模式：list 列表循环（默认）｜one 单曲循环｜off 不循环
   var loopMode = readLoopMode();
+  // 音量 0～1（默认满音量），与循环模式一样跨页面持久化
+  var volume = readVolume();
   // 迷你条拖动状态：pointerdown 时快照一次 rect，整段拖动复用（与音乐页同一套逻辑）
   var miniDrag = null;
   var miniDragBound = false;
@@ -75,6 +78,7 @@
       index: index,
       track: track,
       loopMode: loopMode,
+      volume: volume,
       playing: !!(audio && !audio.paused && !audio.ended),
       currentTime: audio ? (audio.currentTime || 0) : 0,
       duration: audio && isFinite(audio.duration) ? audio.duration : 0,
@@ -102,6 +106,26 @@
 
   function applyLoopMode() {
     if (audio) audio.loop = loopMode === 'one';
+  }
+
+  function readVolume() {
+    try {
+      var v = parseFloat(localStorage.getItem(VOLUME_KEY));
+      if (isFinite(v) && v >= 0 && v <= 1) return v;
+    } catch (e) {}
+    return 1;
+  }
+
+  function setVolume(v) {
+    v = Number(v);
+    if (!isFinite(v)) return;
+    volume = Math.min(1, Math.max(0, v));
+    try { localStorage.setItem(VOLUME_KEY, String(volume)); } catch (e) {}
+    if (audio) {
+      audio.volume = volume;
+      audio.muted = false;
+    }
+    emit('change');
   }
 
   function setLoopMode(mode) {
@@ -137,6 +161,10 @@
       emit('change');
     });
     applyLoopMode();
+    // 持久化音量在音频节点创建/复用后立刻应用（刷新与 SPA 换页都生效）；
+    // 静音一律通过 volume=0 表达，不再借用 audio.muted
+    audio.volume = volume;
+    audio.muted = false;
     return audio;
   }
 
@@ -389,6 +417,8 @@
     next: function () { play(index + 1); },
     prev: function () { play(index - 1); },
     setLoopMode: setLoopMode,
+    setVolume: setVolume,
+    get volume() { return volume; },
     cycleLoop: function () {
       setLoopMode(loopMode === 'list' ? 'one' : (loopMode === 'one' ? 'off' : 'list'));
     },

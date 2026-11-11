@@ -30,10 +30,14 @@ rightbar:
         <button type="button" class="music-ctl__icon" id="music-loop" aria-label="列表循环" title="列表循环，点击切换">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17 2l4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/></svg>
         </button>
-        <button type="button" class="music-ctl__icon" id="music-mute" aria-label="静音">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 9h3.5L12 5.5v13L7.5 15H4z"/><path fill="currentColor" d="M15.2 8.8l1.3-1.3 2.2 2.2 2.2-2.2 1.3 1.3-2.2 2.2 2.2 2.2-1.3 1.3-2.2-2.2-2.2 2.2-1.3-1.3 2.2-2.2z"/></svg>
-        </button>
-        <input type="range" class="music-ctl__vol" id="music-vol" min="0" max="100" step="1" value="100" aria-label="音量">
+        <span class="music-vol" id="music-vol-wrap">
+          <button type="button" class="music-ctl__icon" id="music-mute" aria-label="音量" aria-expanded="false" aria-controls="music-vol-pop" title="音量，点击展开或收起音量条">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 9h3.5L12 5.5v13L7.5 15H4z"/></svg>
+          </button>
+          <span class="music-vol__pop" id="music-vol-pop">
+            <input type="range" class="music-vol__range" id="music-vol" min="0" max="100" step="1" value="100" aria-label="音量">
+          </span>
+        </span>
       </div>
     </div>
   </div>
@@ -138,7 +142,24 @@ rightbar:
   pointer-events: none; transition: transform .12s ease;
 }
 .music-seek.is-dragging .music-seek__thumb { transform: scale(1.2); }
-.music-ctl__vol { flex: 0 0 72px; width: 72px; accent-color: #1DB954; }
+/* 音量：默认收起只留一个小喇叭，点按/悬停展开绝对定位的浮层（不参与控件行布局，不产生横向滚动） */
+.music-vol { position: relative; flex: 0 0 auto; display: flex; }
+.music-vol__pop {
+  position: absolute; right: -6px; bottom: calc(100% + 10px);
+  display: flex; align-items: center; padding: 10px 12px;
+  border-radius: 12px; z-index: 6;
+  background: var(--music-card-bg); border: 1px solid var(--music-card-border);
+  -webkit-backdrop-filter: var(--music-card-blur); backdrop-filter: var(--music-card-blur);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
+  opacity: 0; visibility: hidden; transform: translateY(4px); pointer-events: none;
+  /* visibility 不参与过渡：开合瞬间切换，展开时滑块立即可聚焦（过渡只做淡入/位移） */
+  transition: opacity .16s ease, transform .16s ease;
+}
+/* 透明桥接区盖住浮层与按钮之间的空隙：鼠标从按钮移到滑块途中不会触发 mouseleave 收起 */
+.music-vol__pop::after { content: ''; position: absolute; left: 0; right: 0; bottom: -12px; height: 12px; }
+.music-vol.is-open .music-vol__pop { opacity: 1; visibility: visible; transform: none; pointer-events: auto; }
+.music-vol__range { width: 120px; margin: 0; accent-color: #1DB954; }
+.music-vol__range:focus-visible { outline: 2px solid #1DB954; outline-offset: 2px; }
 .music-list-card { border-radius: 16px; background: var(--music-card-bg); border: 1px solid var(--music-card-border); overflow: hidden; -webkit-backdrop-filter: var(--music-card-blur); backdrop-filter: var(--music-card-blur); }
 .music-list__head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid rgba(127, 127, 127, 0.16); font-weight: 600; }
 .music-list__count { font-size: 12px; font-weight: 400; opacity: .6; }
@@ -254,9 +275,8 @@ rightbar:
   #music-cur { order: 2; }
   #music-dur { order: 3; }
   #music-loop { order: 4; }
-  #music-mute { order: 5; }
+  #music-vol-wrap { order: 5; }
   #music-seek { order: 6; flex: 1 0 100%; }
-  .music-ctl__vol { display: none; }
   .music-item { grid-template-columns: 34px 24px 1fr auto; padding: 10px 8px; }
   .music-item__cover { width: 34px; height: 34px; }
 }

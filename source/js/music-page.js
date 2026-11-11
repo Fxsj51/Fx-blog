@@ -48,6 +48,8 @@
     var toggleBtn = document.getElementById('music-toggle');
     var loopBtn = document.getElementById('music-loop');
     var muteBtn = document.getElementById('music-mute');
+    var volWrap = document.getElementById('music-vol-wrap');
+    var volPop = document.getElementById('music-vol-pop');
     var volEl = document.getElementById('music-vol');
 
     if (!list || !player || !lyricsScroll) {
@@ -76,14 +78,21 @@
     // ---------------- 播放控件（自绘进度条：按下即跳、拖动跟随、松手不回弹） ----------------
     var ICON_PLAY = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 5l12 7-12 7z"/></svg>';
     var ICON_PAUSE = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
-    // 循环三态沿用页面现有内联 SVG 图标写法（与播放/静音同尺寸、同 currentColor），不引额外 iconfont
+    // 音量图标沿用原有喇叭形状（不重绘）：常态只留喇叭，音量为 0 时叠上原来的「×」
+    var VOL_BASE = '<path fill="currentColor" d="M4 9h3.5L12 5.5v13L7.5 15H4z"/>';
+    var VOL_ON = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' + VOL_BASE + '</svg>';
+    var VOL_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' + VOL_BASE +
+      '<path fill="currentColor" d="M15.2 8.8l1.3-1.3 2.2 2.2 2.2-2.2 1.3 1.3-2.2 2.2 2.2 2.2-1.3 1.3-2.2-2.2-2.2 2.2-1.3-1.3 2.2-2.2z"/></svg>';
+    // 三态图标：列表循环 / 不循环保持原 repeat 图标不动；
+    // 仅单曲循环换成参考图的圆环双弧 + V 形箭头，并保留「1」作为该态标记
     var LOOP_PATHS = '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17 2l4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/>';
+    var LOOP_ONE_PATHS = '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.1A7.6 7.6 0 1 0 5.1 8.8M7.9 7.8L5.1 8.8L4.1 6M5.1 15.2A7.6 7.6 0 0 0 18.9 15.2M19.9 18L18.9 15.2L16.1 16.2"/>';
     var LOOP_SVG = function (inner) {
       return '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' + inner + '</svg>';
     };
     var LOOP_META = {
       list: { icon: LOOP_SVG(LOOP_PATHS), label: '列表循环' },
-      one: { icon: LOOP_SVG(LOOP_PATHS + '<text x="12" y="16" text-anchor="middle" font-size="9" font-weight="700" fill="currentColor">1</text>'), label: '单曲循环' },
+      one: { icon: LOOP_SVG(LOOP_ONE_PATHS + '<text x="12" y="15.4" text-anchor="middle" font-size="9" font-weight="700" fill="currentColor">1</text>'), label: '单曲循环' },
       off: { icon: LOOP_SVG(LOOP_PATHS + '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 4l16 16"/>'), label: '不循环' }
     };
     var audioEl = player.ensure();
@@ -142,13 +151,25 @@
       loopBtn.classList.toggle('is-off', mode === 'off');
     }
 
-    function syncMute() {
-      if (!muteBtn || !audioEl) return;
-      var muted = audioEl.muted || audioEl.volume === 0;
+    // 音量状态只在 SitePlayer 里存一份（0～1），图标/滑块都按它渲染：
+    // 0 → 静音图标；>0 → 普通喇叭；滑块值与音量条开合互不影响
+    var volMuted = null;
+    function syncVolume(st) {
+      if (!muteBtn) return;
+      var v = st && typeof st.volume === 'number' ? st.volume : (audioEl ? audioEl.volume : 1);
+      if (!(v >= 0)) v = 1;
+      var muted = !(v > 0);
+      if (muted !== volMuted) {
+        volMuted = muted;
+        muteBtn.innerHTML = muted ? VOL_OFF : VOL_ON;
+      }
       muteBtn.classList.toggle('is-muted', muted);
-      muteBtn.setAttribute('aria-label', muted ? '取消静音' : '静音');
-      if (volEl && document.activeElement !== volEl) {
-        volEl.value = String(Math.round(audioEl.volume * 100));
+      muteBtn.setAttribute('aria-label', muted ? '音量（静音）' : '音量');
+      muteBtn.title = (muted ? '音量（静音）' : '音量') + '，点击展开或收起音量条';
+      if (volEl) {
+        var pct = Math.round(v * 100);
+        if (document.activeElement !== volEl) volEl.value = String(pct);
+        volEl.setAttribute('aria-valuetext', pct + '%');
       }
     }
 
@@ -291,19 +312,63 @@
 
     if (toggleBtn) toggleBtn.addEventListener('click', function () { player.toggle(); });
 
-    if (muteBtn) {
+    // ---------------- 音量条：默认收起，点按或悬停展开，再点收起 ----------------
+    // 浮层是绝对定位的，展开/收起不参与控件行布局（不挤动其它控件、不产生横向滚动）
+    var volPinned = false;
+
+    function setVolOpen(open) {
+      if (!volWrap) return;
+      volWrap.classList.toggle('is-open', !!open);
+      if (muteBtn) muteBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function closeVol(restoreFocus) {
+      volPinned = false;
+      setVolOpen(false);
+      if (restoreFocus && muteBtn) muteBtn.focus();
+    }
+
+    if (muteBtn && volWrap) {
       muteBtn.addEventListener('click', function () {
-        audioEl.muted = !audioEl.muted;
-        syncMute();
+        // 点按 = 在「显示/不显示音量条」之间切换（悬停展开不算锁定）
+        if (volPinned) { closeVol(false); return; }
+        volPinned = true;
+        setVolOpen(true);
+        // 先强制样式生效（visibility 不参与过渡），再把焦点交给滑块，
+        // 键盘用户展开后可直接用方向键调音量
+        if (volEl && volWrap) {
+          void volWrap.offsetHeight;
+          volEl.focus();
+        }
+      });
+      volWrap.addEventListener('mouseenter', function () { if (!volPinned) setVolOpen(true); });
+      volWrap.addEventListener('mouseleave', function () { if (!volPinned) setVolOpen(false); });
+      // 在浮层上按下（拖滑块）时锁定，避免拖动途中指针移出浮层就收起
+      volWrap.addEventListener('pointerdown', function (e) {
+        if (volPop && volPop.contains(e.target)) volPinned = true;
       });
     }
 
+    function onVolOutside(e) {
+      if (!volPinned) return;
+      if (volWrap && volWrap.contains(e.target)) return;
+      closeVol(false);
+    }
+    function onVolKey(e) {
+      if (e.key !== 'Escape' || !volWrap) return;
+      if (!volWrap.classList.contains('is-open')) return;
+      closeVol(true);
+    }
+    document.addEventListener('pointerdown', onVolOutside, true);
+    document.addEventListener('keydown', onVolKey);
+
     if (volEl) {
+      // 原生 range：左右方向键、Home/End 天然可用；值即音量（0～100 → 0～1）
       volEl.addEventListener('input', function () {
-        var v = Number(volEl.value) / 100;
-        audioEl.volume = isFinite(v) ? Math.min(1, Math.max(0, v)) : 1;
-        if (audioEl.volume > 0 && audioEl.muted) audioEl.muted = false;
-        syncMute();
+        var pct = Number(volEl.value);
+        if (!isFinite(pct)) pct = 100;
+        player.setVolume(pct / 100);
+        syncVolume(player.state());
       });
     }
 
@@ -519,7 +584,7 @@
       syncToggle(st);
       syncLoop(st);
       syncProgress(st);
-      syncMute();
+      syncVolume(st);
     }
 
     if (loopBtn) {
@@ -550,6 +615,8 @@
       unsubscribe();
       lyricToken++;
       dragHandlers = null;
+      document.removeEventListener('pointerdown', onVolOutside, true);
+      document.removeEventListener('keydown', onVolKey);
       if (audioEl) audioEl.removeEventListener('loadedmetadata', onLoadedMeta);
     };
 

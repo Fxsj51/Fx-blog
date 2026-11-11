@@ -1,7 +1,7 @@
 # HANDOFF — Fx-blog 交接文档
 
 > 本文件面向"下一轮接手的人/AI"。目标是：读完之后能在**不改坏站点**的前提下继续开发。
-> 最后更新：2026-11-11（第十三批：播放器默认预选第一首 + 循环播放三态）
+> 最后更新：2026-11-11（第十四批：单曲循环图标换参考图样式 + 静音按钮改可展开音量条）
 > 状态标记：**【实测】**= 本轮实际跑过/量过；**【推算】**= 按 CSS 公式推导，未在浏览器里量；**【未覆盖】**= 从没跑过。
 
 ---
@@ -702,6 +702,23 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 
 **验证【实测】**：预选 19/19 PASS、循环 15/15 PASS。默认列表循环且未写存储；三态点击/键盘切换、localStorage 值、`audio.loop` 同步；单曲循环曲终 `t=1.4` 仍同一首；不循环最后一首 `paused=true`、索引不变；列表循环最后一首结束 `index=0`；刷新/SPA 后 `one` 保持；1440 控件行 460×34、375 为 260×64 两行、`sw=cw`；全页 1 个 `<audio>`；无 JS 报错。`npm run build` 通过，`[breakpoints] 断点校验通过`。
 - 截图（工作区，不入库）：`shots\` 下 `music-preselect-1440.png`、`music-preselect-375.png`、`loop-ctl-1440.png`、`loop-ctl-375.png`。
+
+### 第十四批（2026-11-11）：单曲循环图标换参考图样式 + 音量条改可展开
+
+**仅动单曲循环一个图标**（`source/js/music-page.js`）：
+- 参考图（86×69px，唯一内容是一个圆环双弧 + 左上/右下箭头的循环图标）只用于风格对齐；按用户确认，只替换**单曲循环**这一态，并保留原有「1」作为该态标记。
+- `LOOP_ONE_PATHS`：`M19.5 13.1A7.6 7.6 0 1 0 5.1 8.8M7.9 7.8L5.1 8.8L4.1 6M5.1 15.2A7.6 7.6 0 0 0 18.9 15.2M19.9 18L18.9 15.2L16.1 16.2`（stroke 2、圆头圆角、`currentColor`、20px，与其它图标同尺寸）。
+- **列表循环 / 不循环两态逐字节未动**：仍是 `M17 2l4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3`，不循环另加斜杠 `M4 4l16 16`；`music/index.md` 里的静态初始图标也回到旧 repeat（默认列表循环）。
+- 三态逻辑、`aria-label`/`title`、键盘 Space/Enter、`stellar:v2:player-loop-mode` 持久化全部未改。
+
+**音量：静音按钮 → 可展开音量条**（`source/js/site-player.js` + `source/js/music-page.js` + `source/music/index.md`）：
+- 站点播放器新增 `volume`（0～1）与 `stellar:v2:player-volume`：`readVolume()`/`setVolume()`，`ensureAudio()` 里应用 `audio.volume` 并保持 `audio.muted=false`（静音只用 volume=0 表达），snapshot 带 `volume`，API 暴露 `setVolume`/`volume`。
+- 音乐页 `#music-mute` 改为「显示/不显示音量条」开关：`.music-vol` 包裹按钮 + `#music-vol-pop` 绝对定位浮层（`right:-6px; bottom:calc(100%+10px)`），默认收起只显示小喇叭（复用原喇叭路径，没有重绘）；点按切换 `is-open` + `aria-expanded`，悬停展开、移开收起（未锁定），浮层 `::after` 12px 透明桥接防止跨越间隙误关，外侧 pointerdown 或 Escape 收起。
+- 滑块是原生 `<input type=range>`（0～100 → `player.setVolume(v/100)`），方向键/Home/End 天然可用；拖到 0 换回原来的喇叭+× 图标并 `aria-label="音量（静音）"`，拖回即恢复。`visibility` 不参与过渡（保证展开瞬间可聚焦），展开只影响浮层自身、不参与控件行布局。
+- 窄屏取舍：不改既有 order（播放→当前时长→总时长→循环→音量，进度条独占一行），只把 5 号位的按钮换成 wrapper；浮层绝对定位，375 下浮层 145px 宽、`x=123` 完整落在视口内，`scrollWidth===clientWidth`，无横向滚动条闪现。
+
+**验证【实测】**：`npm run build` 通过 + `[breakpoints] 断点校验通过（1180/1181、900/901…）`；CDP 23/23 PASS——两态旧图标逐字节断言、单曲循环新图标+「1」、点按/悬停开合、展开不改变控件行 rect、`sw=cw` 且 `scrollX=0`、滑块 0/0.5/1 与 `audio.volume`/图标/存储一致、方向键 0.99→0.98→0.99、刷新与 SPA 往返保持 0.4、音量 0 刷新仍是静音态、拖回 70 恢复、全页 1 个 `<audio>`、无 JS 报错。
+- 截图（工作区，不入库）：`shots\` 下 `loop-vol-1440-closed.png`、`loop-vol-1440-open.png`、`loop-vol-375-closed.png`、`loop-vol-375-open.png`、`loop-icon-list-zoom.png`、`loop-icon-one-zoom.png`、`loop-icon-off-zoom.png`、`vol-icon-zoom.png`。
 
 
 
