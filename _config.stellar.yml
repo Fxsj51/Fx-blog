@@ -1295,11 +1295,6 @@ inject:
         outline-offset: 2px;
       }
 
-      /* 减少动态效果：停转封面 */
-      @media (prefers-reduced-motion: reduce) {
-        .site-mini__disc { animation: none; }
-      }
-
       /* 未选曲时中心孔兜底 */
       .site-mini__disc::before {
         content: '';

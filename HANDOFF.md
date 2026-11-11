@@ -801,24 +801,37 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 - 收起态：`width:76px; right:8px; bottom:24px`，只显示 `.site-mini__disc`；盘身沿用 `CP-disc-cropped.webp`，中心 53% 圆形曲目封面（与迷你条/音乐页同一套 label 裁圆），`border-radius:50%` 不露方角。
 - 尺寸取舍：左栏头像实测 48×48；封面沿用组件里既有的 76px 唱片，这样收起/展开是同一枚盘在缩放移动，不会出现 76→48 的尺寸跳变（属同一量级，且与小尺寸黑胶既有视觉一致）。
 - 展开态：`width:360px; right:30px; bottom:30px`，`.site-mini` 恢复原 padding/底板/信息区，布局与控件完全不变。
-- 出现条件：无右栏页面（文章/关于/分类/标签/归档等）与 ≤1180 抽屉断点；有右栏且 >1180 时仍默认整条展开；`/music/` 仍有大播放器，抽屉整体 `display:none` 不重复；空歌单不出现。
+- 出现条件：只看视口断点——`≤1180` 收起为圆封面，`>1180` 所有页面（首页/文章/分类/标签/归档/关于等）都保持整条展开，与页面类型无关；`/music/` 有大播放器，抽屉整体 `display:none` 不重复；空歌单不出现。
 
 **交互**：
 - 点圆形封面 = 展开/收起（`aria-expanded` 同步，`aria-label`/`title` 在「展开播放器 / 收起播放器」间切换）；封面不再是播放/暂停按钮，播放/暂停仍在条内按钮。
 - 展开后按「最后一次交互 + 8s 无操作」自动收回：`pointerenter` 悬停暂停计时、`pointerleave` 重新计时；`pointerdown`/`focusin` 视为交互并重置；收回不打断播放（只切 class）。
 - 点组件以外任意位置立即收回：`document` 捕获阶段 `pointerdown`，用 `composedPath()` 判断是否在 `#music-drawer` 内（目标元素 `stopPropagation` 也拦不住）；忽略 `isTrusted === false` 的程序化事件。`Escape` 同样收回。所有收起路径都清计时器。
 - 过渡：`#music-drawer` 过渡 `width/right/bottom`，`.site-mini` 过渡 `padding/background/border-color/box-shadow`（`--dur-slow`），面板向左生长、封面贴右缘，不跳变。
-- 无障碍：`<button>` 可聚焦、`:focus-visible` 描边、Enter/Space 切换；`prefers-reduced-motion: reduce` 下停转（系统级开启时无动画）。
+- 无障碍：`<button>` 可聚焦、`:focus-visible` 描边、Enter/Space 切换（不再用 `prefers-reduced-motion` 停转，见修正节）。
 
 **验证【实测】**：`npm run build` 通过 + `[breakpoints] 断点校验通过（1180/1181、900/901…）`；`verify-collapse18.js` **37/37 PASS**（无头、真实 pointer/key 事件）：
 - 1440 文章页（组件隐藏）：76×76 正圆、距视口右 8 / 底 24、`position:fixed`、`z-index:99`、封面为当前曲目、`aria-expanded=false`；无横向溢出；`sw===cw` 1432。
 - 点封面展开：宽 360、距右/底各 30、信息区可见、`aria-expanded=true`；播放时 `animation-play-state:running`，暂停后 `paused` 且 transform 两帧一致（停在当前角度）。
 - 8s 自动收回：展开后移开鼠标等 9s 收回；收回前后 `currentTime` 1.43→10.56（继续播放）；鼠标停留在条内 9.5s 不收回，移出 8s 后收回；连点两次立即收起，再等 9.5s 仍收起（无残留计时器）。
 - 点正文（该元素 `stopPropagation`）立即收回；程序化 `pointerdown`（`isTrusted=false`）不收回；Escape 收回。
-- 切歌封面更新（14.3 Billion Years → Billie Jean）；键盘 Enter 展开且 `aria-expanded=true`；reduced-motion 下 `animation-name:none`，恢复 no-preference 后回到 `site-mini-spin`。
+- 切歌封面更新（14.3 Billion Years → Billie Jean）；键盘 Enter 展开且 `aria-expanded=true`（当批还加了 reduced-motion 停转，后于修正节移除）。
 - SPA：首页（有右栏）整条展开 → 文章页恢复圆封面 → 音乐页整体隐藏；全程 1 个 `<audio>`、无 JS 报错。
 - 375：76px、距右 8/底 24、无横向溢出；点开宽 315 不溢出。1180 首页圆封面、1181 首页整条、两档均无横向溢出。
 - 截图（工作区，不入库）：`shots\feature18-1440-hidden-full.png`、`shots\feature18-1440-expanded.png`、`shots\feature18-disc-zoom-playing.png`、`shots\feature18-disc-zoom-paused.png`、`shots\feature18-375.png`、`shots\feature18-375-expanded.png`。
+
+#### 第十九批修正（2026-11-12）：宽屏不收起 / 唱片要转 / 暂停一次到位
+
+1. **宽屏不该收起**：`syncDrawer()` 原来用 `!!#rightbar-region && width>1180` 判定，无右栏页面（文章/关于/分类/标签/归档）即使 >1180 也会收起。改为纯视口判定 `window.innerWidth > 1180`，页面类型不再参与；`/music/` 仍因有大播放器整体隐藏。`resize` 监听沿用，1180↔1181 双向切换只由 `setExpanded()` 切 class，无内联样式残留。
+2. **唱片不转**：批 19 加的 `@media (prefers-reduced-motion: reduce) { .site-mini__disc { animation:none } }` 命中本机（Windows 关闭了「动画效果」，`matchMedia` 返回 reduce），两态都停转。删除该规则；旋转仍作用在 `.site-mini__disc`（盘身背景 + 53% 封面 + 中心孔整体），`#music-drawer` 的 transition 只覆盖 `width/right/bottom/transform/opacity`，`.site-mini` 只覆盖 `padding/background/border-color/box-shadow`，不会覆盖 `animation`/`transform`；节点不重建，`is-playing` 随播放事件即时切换。
+3. **暂停要点两下**：`renderMini()` 每次 `timeupdate`（约 250ms 一次）都 `innerHTML` 重建播放/暂停图标；若 timeupdate 落在 mousedown 与 mouseup 之间，按下的 SVG 节点被替换，浏览器判定 press/release 目标不同，不再派发 `click`。改为用 `data-playing` 守卫，只在播放状态真正变化时重建图标与 aria-label。
+
+**验证【实测】**：`npm run build` + 断点校验通过；`verify-fix19.js` **32/32 PASS**（真实 pointer 事件、未模拟 no-preference）：
+- >1180 首页/文章/分类/归档/关于均为整条展开（360px、信息区 flex、`is-collapsed` 不在）；文章页停 9.5s 不自动收起；五页 `sw===cw`。
+- 本机 reduce 环境下 `animation-name` 仍为 `site-mini-spin`；展开态与收起态播放时 transform 在 600ms 内变化、`running`，暂停后两帧一致、`paused`。
+- 播放/暂停按钮 20 次真实单击 20 次翻转（0/1 交替无漏），连点 5.5s 内面板未被收起；下一首单击生效；切歌封面 `billie-jean.webp`→`come-and-get-your-love.webp`。
+- 1180/375 为 76px 圆封面；1181 恢复 360px 且无内联残留，再回 1180 稳定在 76（无过渡中间值）；点外部/Esc 仍立即收回；音乐页抽屉 `display:none`、全页 1 个 `<audio>`；全程无 JS 报错。
+- 截图：`shots\feature19-1440-article-expanded.png`、`shots\feature19-1180-collapsed.png`、`shots\feature19-375-collapsed.png`。
 
 
 

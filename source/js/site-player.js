@@ -413,11 +413,17 @@
     mini.bar.setAttribute('aria-valuenow', String(Math.round(pct)));
     mini.cur.textContent = formatTime(st.currentTime);
     mini.dur.textContent = formatTime(dur);
-    mini.toggle.innerHTML = st.playing ? ICON_PAUSE : ICON_PLAY;
-    mini.toggle.setAttribute('aria-label', st.playing ? '暂停' : '播放');
+    // timeupdate 每 ~250ms 调一次 renderMini：图标只在播放状态真正变化时重建，
+    // 否则按下瞬间的 SVG 节点会被替换掉，浏览器不再派发 click（表现为偶尔要点两下）
+    var playingAttr = st.playing ? '1' : '0';
+    if (mini.toggle.getAttribute('data-playing') !== playingAttr) {
+      mini.toggle.setAttribute('data-playing', playingAttr);
+      mini.toggle.innerHTML = st.playing ? ICON_PAUSE : ICON_PLAY;
+      mini.toggle.setAttribute('aria-label', st.playing ? '暂停' : '播放');
+    }
   }
 
-  // 音乐页有自己的大播放器，抽屉不重复；无右栏页面与窄屏收起为贴右缘的圆形封面
+  // 音乐页有自己的大播放器，抽屉不重复；其余页面只看视口断点：≤1180 收起为贴右缘的圆形封面
   function clearCollapseTimer() {
     if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; }
   }
@@ -468,8 +474,8 @@
       drawer.style.setProperty('display', 'none', 'important');
       return;
     }
-    // 有右栏且不在抽屉断点（>1180）→ 默认整条展开；其余情况默认只是一枚圆形封面
-    setExpanded(!!document.getElementById('rightbar-region') && window.innerWidth > 1180, false);
+    // 只看视口断点：>1180 始终保持整条展开；≤1180 才收起为贴右缘的圆形封面
+    setExpanded(window.innerWidth > 1180, false);
   }
 
   window.SitePlayer = {
