@@ -219,15 +219,24 @@ rightbar:
  * 改动需同步；scripts/breakpoints.js 在构建期校验，不一致会构建失败。
  *
  * 三段式布局（断点均在视口宽度上判定）：
- * ≤1180      堆叠：当前曲卡片 / 歌单 / 歌词（.music-page 基础 flex 列）。
- * 1181–1599  当前曲卡片通栏，下方「歌单 + 300px 歌词栏」两列。
- * ≥1600      并排：左列「当前曲卡片 + 歌单」（888px），右列歌词（300px），
- *            歌词顶部与当前曲卡片顶部齐平，右缘与首页右栏右缘重合。
+ * ≤1180      堆叠：当前曲卡片 / 歌单 / 歌词（.music-page 基础 flex 列），歌词 300px 不粘附。
+ * 1181–1599  当前曲卡片通栏，下方「歌单 + 300px 歌词栏」两列；歌词不粘附。
+ * ≥1420      左列放得下控制行（≥480px）后，改为左列「当前曲卡片 + 歌单」、
+ *            右列歌词跨两行并粘附（top:16px），容器比面板高才有粘附行程。
+ * ≥1600      同上，左列 824px；歌词右缘与首页右栏右缘对齐后再内缩 64px。
+ *
+ * 右缘留白：1181+ 给 .music-page 加 padding-right:64px——1fr 左列随之收窄，
+ * 歌词右缘也从内容右缘内缩 64px，整块内容不再顶到右缘；歌词列宽仍为 300px，
+ * 行宽不变，故换行/字号/行高均不受影响。
  *
  * 右缘对齐依据（无头 Edge，滚动条 8px）：
- *   首页右栏右缘 = 视口内容宽 - nd-off；本页内容左缘 = nd-off + 340 + 56，宽 888。
- *   故需从主栏右缘继续右移 100vw - sbw - 2*nd-off - 1284，由 --nd-off / --sbw 纯 CSS 得出。
- * 实测：1920 窗口首页右栏 1421–1801，歌词 1501–1801；2560 窗口 1741–2121 / 1821–2121。
+ *   首页右栏右缘 = 视口内容宽 - nd-off；本页内容左缘 = nd-off + 396，父级 .md-text 右缘 = nd-off + 1284。
+ *   故需从 .md-text 右缘继续右移 100vw - sbw - 2*nd-off - 1284，由 --nd-off / --sbw 纯 CSS 得出
+ *   （与左列宽度无关，1fr 中间列吸收左列变化）；
+ *   再由 .music-page 的 padding-right:64px 把歌词右缘从该对齐线内缩 64px 作留白。
+ *   实测（滚动条 8px）：1600 首页右栏 1212–1592 / 歌词 1228–1528；
+ *   1920 右栏 1436–1816 / 歌词 1452–1752；2560 右栏 1756–2136 / 歌词 1772–2072。
+ *   即歌词右缘 = 右栏右缘 - 64px。
  */
 @media (min-width: 1181px) {
   /* 这些父级原本 overflow:hidden/auto，会把视口滚动容器换成它们自己，导致 sticky 不跟随页面；
@@ -236,10 +245,10 @@ rightbar:
   main.site-main:has(.music-page),
   .md-text:has(.music-page),
   body:has(.music-page) { overflow: visible !important; }
-  .music-page { display: grid; grid-template-rows: auto auto; column-gap: 0; }
+  .music-page { display: grid; grid-template-rows: auto auto; column-gap: 0; padding-right: 64px; }
   .music-body__main { width: 100%; }
 }
-/* 1181–1599：当前曲卡片通栏，歌单与歌词在下一行分两列 */
+/* 1181–1599：当前曲卡片通栏，歌单与歌词在下一行分两列（此宽度左列放不下卡片控制行，歌词不粘附） */
 @media (min-width: 1181px) and (max-width: 1599px) {
   .music-page { grid-template-columns: minmax(0, 1fr) 16px 300px; }
   .music-now { grid-column: 1 / -1; grid-row: 1; }
@@ -247,11 +256,18 @@ rightbar:
   .music-lyrics-dock { grid-column: 3; grid-row: 2; }
   .music-lyrics { position: static; height: 452px; }
 }
+/* ≥1420：左列宽到 480px 以上、控制行不再溢出，歌词改为右列跨两行——容器比面板高，sticky 才有行程 */
+@media (min-width: 1420px) and (max-width: 1599px) {
+  .music-now { grid-column: 1; grid-row: 1; }
+  .music-body { grid-column: 1; grid-row: 2; }
+  .music-lyrics-dock { grid-column: 3; grid-row: 1 / span 2; }
+  .music-lyrics { position: sticky; top: 16px; height: 452px; }
+}
 /* ≥1600：左列卡片 + 右列歌词并排，歌词顶部与当前曲卡片齐平、右缘对齐首页右栏 */
 @media (min-width: 1600px) {
   /* 选择器需压过主题 .md-text>div { margin: var(--gap-p) 0 }（特异度 0,1,1），否则负边距被清 0 */
   .md-text > .music-page {
-    grid-template-columns: minmax(0, 888px) minmax(0, 1fr) 300px;
+    grid-template-columns: minmax(0, 824px) minmax(0, 1fr) 300px;
     margin-right: calc(1284px + 2 * var(--nd-off, 0px) + var(--sbw, 8px) - 100vw);
   }
   .music-now { grid-column: 1; grid-row: 1; }
