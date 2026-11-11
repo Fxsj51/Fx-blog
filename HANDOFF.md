@@ -1,7 +1,7 @@
 # HANDOFF — Fx-blog 交接文档
 
 > 本文件面向"下一轮接手的人/AI"。目标是：读完之后能在**不改坏站点**的前提下继续开发。
-> 最后更新：2026-11-11（第十四批：单曲循环图标换参考图样式 + 静音按钮改可展开音量条）
+> 最后更新：2026-11-11（第十五批：验证脚本统一改无头，禁止在桌面弹窗）
 > 状态标记：**【实测】**= 本轮实际跑过/量过；**【推算】**= 按 CSS 公式推导，未在浏览器里量；**【未覆盖】**= 从没跑过。
 
 ---
@@ -271,6 +271,15 @@ LCP / CLS：**尚未测量**。要复测需要：`npm run server` 起本地服�
 - 任何 SPA / 布局改动目前**没有自动化回归手段**，只能人工在浏览器里按 §7.4 检查。
 
 下一轮若要补，建议每个脚本只做一件事并输出 PASS/FAIL + 退出码：SPA 换页不整页刷新、播放器跨页不断播、1180/1181 断点行为、右栏卡片渲染、图片懒加载、几何范围比对（直接比对 §7.2 表）。
+
+### 11.1 验证脚本一律无头（硬规则）
+
+- 工作区（`C:\Users\XIONG\Documents\Trae-CN\temp_20261110_02`）里的验证/截图脚本都是**直连 CDP**：`spawn(msedge, ['--headless=new', '--remote-debugging-port=…'])` 起独立实例，**不是** Playwright `launch()`，也不是 IDE 浏览器面板。
+- **默认必须无头**：不得去掉 `--headless=new`，不得再加 `--start-maximized` / `--window-position` 之类会把窗口弹到用户桌面、抢焦点挡屏幕的一次性调试参数。
+- 窗口被遮挡时浏览器会暂停合成/动画，导致过渡停在起始帧、截图与焦点断言抖动——用 `--disable-backgrounding-occluded-windows`、`--disable-renderer-backgrounding`、`--disable-features=CalculateNativeWinOcclusion` 解决，**不要**改用有头窗口。
+- 真实输入在无头下照常：鼠标用 CDP `Input.dispatchMouseEvent`、键盘用 `Input.dispatchKeyEvent`（原生 button 用 Space 触发 click，range 用方向键），都走浏览器输入管线。
+- 音频在无头下可解码、可推进进度（配 `--autoplay-policy=no-user-gesture-required`），但**没有真实音频输出**：音量只能断言 `audio.volume` / `muted` / 图标与存储，不能断言"能听见"；需要听觉确认的项只能由人工在本地做。
+- 冒烟脚本：`node smoke-headless.js`（构建产物加载 + 一张截图 + PASS/FAIL 退出码）。
 
 ---
 
@@ -719,6 +728,13 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 
 **验证【实测】**：`npm run build` 通过 + `[breakpoints] 断点校验通过（1180/1181、900/901…）`；CDP 23/23 PASS——两态旧图标逐字节断言、单曲循环新图标+「1」、点按/悬停开合、展开不改变控件行 rect、`sw=cw` 且 `scrollX=0`、滑块 0/0.5/1 与 `audio.volume`/图标/存储一致、方向键 0.99→0.98→0.99、刷新与 SPA 往返保持 0.4、音量 0 刷新仍是静音态、拖回 70 恢复、全页 1 个 `<audio>`、无 JS 报错。
 - 截图（工作区，不入库）：`shots\` 下 `loop-vol-1440-closed.png`、`loop-vol-1440-open.png`、`loop-vol-375-closed.png`、`loop-vol-375-open.png`、`loop-icon-list-zoom.png`、`loop-icon-one-zoom.png`、`loop-icon-off-zoom.png`、`vol-icon-zoom.png`。
+
+### 第十五批（2026-11-11）：验证脚本统一无头，不再弹窗
+
+- 问题：工作区脚本是 `spawn(msedge, [...])` 直连 CDP 起**独立浏览器实例**（不是 Playwright、不是 IDE 面板），个别脚本没带 `--headless=new`，于是在用户桌面弹出窗口、抢焦点。
+- 处理：工作区所有验证/截图脚本的 62 处 `spawn(EDGE, …)` 统一带 `--headless=new`；清掉 `--window-position` / `--start-maximized` 等调试参数；`music-seek-headed.js` 更名 `music-seek-verify.js` 并改注释；`seek-real-verify.js` / `verify-lyrics*.js` 的"有头"说明同步改掉。
+- 新增 `smoke-headless.js`：构建产物加载 + 一张截图 + PASS/FAIL 退出码，作为无头可用性的最小冒烟。
+- 规则写进 §11.1：验证脚本默认无头，不得在用户桌面弹窗。【实测】`node smoke-headless.js` PASS（`/music/`、1 个 audio、`scrollWidth=clientWidth=1432`、无 JS 异常），截图 `shots\smoke-headless.png`。
 
 
 
