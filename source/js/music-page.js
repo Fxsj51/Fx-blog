@@ -103,9 +103,10 @@
       return VOL_SVG(inner);
     }
     // 三态图标：列表循环 / 不循环保持原 repeat 图标不动；
-    // 仅单曲循环换成参考图的圆环双弧 + V 形箭头，并保留「1」作为该态标记
+    // 单曲循环按参照图重描：圆环双弧（r=10.6、线宽 2.4、圆头）+ 两处折角箭头，
+    // 上弧 220°→360°、下弧 40°→180°，箭头角点 (1.45,7.5)/(22.55,16.5)，臂长 6
     var LOOP_PATHS = '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17 2l4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/>';
-    var LOOP_ONE_PATHS = '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.1A7.6 7.6 0 1 0 5.1 8.8M7.9 7.8L5.1 8.8L4.1 6M5.1 15.2A7.6 7.6 0 0 0 18.9 15.2M19.9 18L18.9 15.2L16.1 16.2"/>';
+    var LOOP_ONE_PATHS = '<path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M3.88 5.19A10.6 10.6 0 0 1 22.6 12M20.12 18.81A10.6 10.6 0 0 1 1.4 12M1.45 1.5L1.45 7.5L7.45 7.5M22.55 22.5L22.55 16.5L16.55 16.5"/>';
     var LOOP_SVG = function (inner) {
       return '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' + inner + '</svg>';
     };
