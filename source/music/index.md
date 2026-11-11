@@ -27,6 +27,9 @@ rightbar:
           <span class="music-seek__thumb" id="music-thumb"></span>
         </div>
         <span class="music-ctl__time" id="music-dur">0:00</span>
+        <button type="button" class="music-ctl__icon" id="music-loop" aria-label="列表循环" title="列表循环，点击切换">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17 2l4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+        </button>
         <button type="button" class="music-ctl__icon" id="music-mute" aria-label="静音">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 9h3.5L12 5.5v13L7.5 15H4z"/><path fill="currentColor" d="M15.2 8.8l1.3-1.3 2.2 2.2 2.2-2.2 1.3 1.3-2.2 2.2 2.2 2.2-1.3 1.3-2.2-2.2-2.2 2.2-1.3-1.3 2.2-2.2z"/></svg>
         </button>
@@ -38,7 +41,7 @@ rightbar:
   <div class="music-body">
     <div class="music-body__main">
       {% playlist %}
-      <p class="music-hint">本页不预加载音频，点击曲目后才开始缓冲；首次播放时显示实际时长。</p>
+      <p class="music-hint">默认预选歌单第一首并读取时长，点击播放才开始出声；循环模式会记住上次选择。</p>
     </div>
   </div>
   <div class="music-lyrics-dock">
@@ -119,6 +122,7 @@ rightbar:
 .music-ctl__icon:hover { background: rgba(127, 127, 127, .22); }
 .music-ctl__icon:focus-visible, .music-seek:focus-visible { outline: 2px solid #1DB954; outline-offset: 2px; }
 .music-ctl__icon.is-muted { opacity: .45; }
+.music-ctl__icon.is-off { opacity: .4; }
 /* 等宽数字 + 固定最小宽度：拖动时 0:59→1:00、总时长载入后位数变化都不再挤动轨道（否则
    pointermove 期间轨道 rect 会抖动，也会让按下时快照的 rect 与视觉位置错位） */
 .music-ctl__time { flex: 0 0 auto; min-width: 5ch; text-align: center; font-size: 12px; opacity: .7; font-variant-numeric: tabular-nums; }
@@ -249,8 +253,9 @@ rightbar:
   #music-toggle { order: 1; }
   #music-cur { order: 2; }
   #music-dur { order: 3; }
-  #music-mute { order: 4; }
-  #music-seek { order: 5; flex: 1 0 100%; }
+  #music-loop { order: 4; }
+  #music-mute { order: 5; }
+  #music-seek { order: 6; flex: 1 0 100%; }
   .music-ctl__vol { display: none; }
   .music-item { grid-template-columns: 34px 24px 1fr auto; padding: 10px 8px; }
   .music-item__cover { width: 34px; height: 34px; }

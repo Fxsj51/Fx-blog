@@ -2,11 +2,13 @@
    音乐页卡片与右下角侧栏迷你播放器都只是它的视图。
    - 音频节点常驻在 body 的隐藏宿主里，换页（SPA）时被移动到新页面的卡片，
      移动同一个媒体元素不会中断播放、不会重新发起请求。
-   - preload="none" 且初始不设 src：点选曲目后才开始缓冲。 */
+   - 打开页面即预选歌单第一首（只拉元数据、不播放）；刷新回到第一首，SPA 换页保持当前曲目。 */
 (function () {
   'use strict';
 
   var HOST_ID = 'site-audio-host';
+  // 与左栏折叠状态的存储命名保持一致
+  var LOOP_KEY = 'stellar:v2:player-loop-mode';
   var ICON_PREV = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>';
   var ICON_NEXT = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 5h2v14h-2zM4 5l11 7-11 7z"/></svg>';
   var ICON_PLAY = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 5l12 7-12 7z"/></svg>';
@@ -18,6 +20,8 @@
   var subscribers = [];
   var playlistCache = null;
   var mini = null;
+  // 循环模式：list 列表循环（默认）｜one 单曲循环｜off 不循环
+  var loopMode = readLoopMode();
   // 迷你条拖动状态：pointerdown 时快照一次 rect，整段拖动复用（与音乐页同一套逻辑）
   var miniDrag = null;
   var miniDragBound = false;
@@ -70,6 +74,7 @@
     return {
       index: index,
       track: track,
+      loopMode: loopMode,
       playing: !!(audio && !audio.paused && !audio.ended),
       currentTime: audio ? (audio.currentTime || 0) : 0,
       duration: audio && isFinite(audio.duration) ? audio.duration : 0,
@@ -87,6 +92,27 @@
     } catch (e) {}
   }
 
+  function readLoopMode() {
+    try {
+      var v = localStorage.getItem(LOOP_KEY);
+      if (v === 'list' || v === 'one' || v === 'off') return v;
+    } catch (e) {}
+    return 'list';
+  }
+
+  function applyLoopMode() {
+    if (audio) audio.loop = loopMode === 'one';
+  }
+
+  function setLoopMode(mode) {
+    if (mode !== 'list' && mode !== 'one' && mode !== 'off') return;
+    loopMode = mode;
+    try { localStorage.setItem(LOOP_KEY, mode); } catch (e) {}
+    applyLoopMode();
+    renderMini();
+    emit('change');
+  }
+
   function ensureAudio() {
     if (audio) return audio;
     audio = document.getElementById('music-audio');
@@ -96,30 +122,46 @@
       // 不挂原生 controls：播放界面由音乐页的自绘控件承载（SPA 下由这里新建节点时同样保持无 controls）
       host().appendChild(audio);
     }
-    audio.preload = 'none';
+    // 预选曲目也要能读出总时长：只拉元数据，不缓冲整段音频
+    audio.preload = 'metadata';
     audio.addEventListener('play', function () { renderMini(); emit('change'); });
     audio.addEventListener('pause', function () { renderMini(); emit('change'); });
     audio.addEventListener('timeupdate', function () { renderMini(); emit('time'); });
     audio.addEventListener('seeked', function () { renderMini(); emit('time'); });
     audio.addEventListener('loadedmetadata', function () { renderMini(); emit('meta'); });
-    audio.addEventListener('ended', function () { play(index + 1); });
+    audio.addEventListener('ended', function () {
+      // 单曲循环由 audio.loop 处理（不重载、不触发 ended）；这里只管列表循环与不循环
+      if (loopMode === 'list') { play(index + 1); return; }
+      // 不循环：停在结尾，保持当前曲目，按钮回到可播状态
+      renderMini();
+      emit('change');
+    });
+    applyLoopMode();
     return audio;
   }
 
-  function play(i) {
+  // 仅选中并准备好曲目：写入 src 触发元数据加载（供总时长/歌词渲染），不调用 play()
+  function select(i) {
     var list = readPlaylist();
-    if (!list.length) return;
+    if (!list.length) return false;
     if (typeof i !== 'number' || isNaN(i)) i = index >= 0 ? index : 0;
     i = ((i % list.length) + list.length) % list.length;
     var track = list[i];
-    if (!track || !track.url) return;
+    if (!track || !track.url) return false;
     var a = ensureAudio();
-    var absolute = new URL(track.url, document.baseURI).href;
     if (index !== i || !a.getAttribute('src')) {
       index = i;
-      a.setAttribute('src', absolute);
+      a.setAttribute('src', new URL(track.url, document.baseURI).href);
       try { a.load(); } catch (e) {}
+      renderMini();
+      emit('change');
     }
+    return true;
+  }
+
+  function play(i) {
+    if (!select(i)) return;
+    var a = ensureAudio();
     var p = a.play();
     if (p && typeof p.catch === 'function') p.catch(function () {});
     renderMini();
@@ -341,10 +383,16 @@
 
   window.SitePlayer = {
     ensure: ensureAudio,
+    select: select,
     play: play,
     toggle: toggle,
     next: function () { play(index + 1); },
     prev: function () { play(index - 1); },
+    setLoopMode: setLoopMode,
+    cycleLoop: function () {
+      setLoopMode(loopMode === 'list' ? 'one' : (loopMode === 'one' ? 'off' : 'list'));
+    },
+    get loopMode() { return loopMode; },
     seek: seek,
     seekToRatio: seekToRatio,
     canSeek: canSeek,
@@ -358,6 +406,9 @@
 
   function boot() {
     if (document.getElementById('music-audio')) ensureAudio();
+    // 默认预选歌单第一首（顺序同 source/_data/playlist.yml）：只选中并准备好，不自动出声；
+    // 刷新回到第一首，SPA 换页由模块内 index 保持当前曲目
+    if (index < 0) select(0);
     syncDrawer();
   }
 

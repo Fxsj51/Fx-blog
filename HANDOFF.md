@@ -1,7 +1,7 @@
 # HANDOFF — Fx-blog 交接文档
 
 > 本文件面向"下一轮接手的人/AI"。目标是：读完之后能在**不改坏站点**的前提下继续开发。
-> 最后更新：2026-11-11（第十二批：右栏仅首页 + 文章页左栏固定）
+> 最后更新：2026-11-11（第十三批：播放器默认预选第一首 + 循环播放三态）
 > 状态标记：**【实测】**= 本轮实际跑过/量过；**【推算】**= 按 CSS 公式推导，未在浏览器里量；**【未覆盖】**= 从没跑过。
 
 ---
@@ -685,6 +685,23 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 - 左栏固定（用临时长文 `zz-scroll-test.md` 验证，已删除并重建 public）：1440 滚动到顶/中/底（`scrollY=0/1456/2910`）左栏均 `fixed`、`top=0`、`mainLeft=340`、`sw=cw=1432`；1440×560 时 `zone.scrollHeight/clientHeight=478/217`，滚到底 `scrollTop=261` 且末项底边 = 容器底边 445（底栏内容不被裁）；1024 中段仍 `fixed top=0`、无溢出；375 文章页抽屉 `left` 从 -316 正常滑到 16 再回到 -316，无溢出；SPA 首页→长文→另一篇→返回，`position` 正确建立/撤销且无内联样式残留；全页 1 个 `<audio>`；无 JS 报错。
 - `npm run build` 通过，`[breakpoints] 断点校验通过`。
 - 截图（工作区，不入库）：`shots\` 下 `rightbar-home-1440.png`、`rightbar-post-1440.png`、`leftbar-top-1440.png`、`leftbar-mid-1440.png`、`leftbar-bottom-1440.png`、`leftbar-inner-scroll-1440x560.png`。
+
+### 第十三批（2026-11-11）：播放器默认预选第一首 + 循环播放三态
+
+**默认预选**（`source/js/site-player.js`）：
+- 新增 `select(i)`：只写 `src` 并 `load()`（`preload="metadata"`），渲染当前曲目、发 `change`，**不调用 play()**；`play(i)` 改为先 `select(i)` 再播放，避免两套载入逻辑。
+- `boot()` 里 `if (index < 0) select(0)`：按 `source/_data/playlist.yml` 顺序取第一首（`14.3 Billion Years / Andrew Prahlow`）。音乐页、首页迷你条共用同一模块状态，所以两处默认选中一致；未选曲的深色 `::before` 垫块被封面图完全覆盖，预选后视觉正常。
+- 刷新回到第一首；SPA 不重载模块，`index` 保持当前曲目（含切歌后的第二首）。第一首无 LRC，歌词区显示「纯音乐，请欣赏」；有 LRC 的第二首会渲染 99 行、73 条译文。
+- 更新音乐页提示文案（原「本页不预加载音频」已不成立）。
+
+**循环三态**（`source/js/site-player.js` + `source/js/music-page.js` + `source/music/index.md`）：
+- 按钮 `#music-loop` 放在控件行时长与静音之间，原生 `<button>` + `aria-label`/`title`（列表循环/单曲循环/不循环），键盘 Space/Enter 原生可操作；图标沿用页面既有内联 SVG 写法（同 20px、`currentColor`），未引 iconfont；`off` 态加 `.is-off` 置灰。
+- 状态存 `localStorage['stellar:v2:player-loop-mode']`（与 `stellar:v2:*` 命名一致），默认 `list`；刷新与 SPA 均保持。
+- 行为：`one` 用 `audio.loop = true`（曲终归零继续，不重载、不触发 ended）；`list` 在 ended 里 `play(index+1)`，最后一首模运算接回第一首；`off` 在 ended 里不跳曲，停在结尾、按钮回「播放」。
+- 移动端控件行增加 `#music-loop { order: 4 }`，静音 5、进度条 6，375 下不挤行。
+
+**验证【实测】**：预选 19/19 PASS、循环 15/15 PASS。默认列表循环且未写存储；三态点击/键盘切换、localStorage 值、`audio.loop` 同步；单曲循环曲终 `t=1.4` 仍同一首；不循环最后一首 `paused=true`、索引不变；列表循环最后一首结束 `index=0`；刷新/SPA 后 `one` 保持；1440 控件行 460×34、375 为 260×64 两行、`sw=cw`；全页 1 个 `<audio>`；无 JS 报错。`npm run build` 通过，`[breakpoints] 断点校验通过`。
+- 截图（工作区，不入库）：`shots\` 下 `music-preselect-1440.png`、`music-preselect-375.png`、`loop-ctl-1440.png`、`loop-ctl-375.png`。
 
 
 

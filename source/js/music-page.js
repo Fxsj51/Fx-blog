@@ -46,6 +46,7 @@
     var curEl = document.getElementById('music-cur');
     var durEl = document.getElementById('music-dur');
     var toggleBtn = document.getElementById('music-toggle');
+    var loopBtn = document.getElementById('music-loop');
     var muteBtn = document.getElementById('music-mute');
     var volEl = document.getElementById('music-vol');
 
@@ -75,6 +76,16 @@
     // ---------------- 播放控件（自绘进度条：按下即跳、拖动跟随、松手不回弹） ----------------
     var ICON_PLAY = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 5l12 7-12 7z"/></svg>';
     var ICON_PAUSE = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
+    // 循环三态沿用页面现有内联 SVG 图标写法（与播放/静音同尺寸、同 currentColor），不引额外 iconfont
+    var LOOP_PATHS = '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17 2l4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/>';
+    var LOOP_SVG = function (inner) {
+      return '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' + inner + '</svg>';
+    };
+    var LOOP_META = {
+      list: { icon: LOOP_SVG(LOOP_PATHS), label: '列表循环' },
+      one: { icon: LOOP_SVG(LOOP_PATHS + '<text x="12" y="16" text-anchor="middle" font-size="9" font-weight="700" fill="currentColor">1</text>'), label: '单曲循环' },
+      off: { icon: LOOP_SVG(LOOP_PATHS + '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 4l16 16"/>'), label: '不循环' }
+    };
     var audioEl = player.ensure();
     var dragging = false;
     var dragPointerId = -1;
@@ -116,6 +127,19 @@
       if (!toggleBtn) return;
       toggleBtn.innerHTML = st.playing ? ICON_PAUSE : ICON_PLAY;
       toggleBtn.setAttribute('aria-label', st.playing ? '暂停' : '播放');
+    }
+
+    function syncLoop(st) {
+      if (!loopBtn) return;
+      var mode = st.loopMode || 'list';
+      var meta = LOOP_META[mode] || LOOP_META.list;
+      if (loopBtn.getAttribute('data-mode') !== mode) {
+        loopBtn.setAttribute('data-mode', mode);
+        loopBtn.innerHTML = meta.icon;
+      }
+      loopBtn.setAttribute('aria-label', meta.label);
+      loopBtn.title = meta.label + '，点击切换';
+      loopBtn.classList.toggle('is-off', mode === 'off');
     }
 
     function syncMute() {
@@ -493,8 +517,13 @@
       if (st.duration > 0) setActiveDuration(formatTime(st.duration));
       updateLyric(st.currentTime);
       syncToggle(st);
+      syncLoop(st);
       syncProgress(st);
       syncMute();
+    }
+
+    if (loopBtn) {
+      loopBtn.addEventListener('click', function () { player.cycleLoop(); });
     }
 
     items.forEach(function (item, i) {
