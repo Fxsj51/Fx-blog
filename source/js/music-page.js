@@ -78,11 +78,30 @@
     // ---------------- 播放控件（自绘进度条：按下即跳、拖动跟随、松手不回弹） ----------------
     var ICON_PLAY = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 5l12 7-12 7z"/></svg>';
     var ICON_PAUSE = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
-    // 音量图标沿用原有喇叭形状（不重绘）：常态只留喇叭，音量为 0 时叠上原来的「×」
+    // 音量图标沿用原有喇叭形状（不重绘），按参考图做分级声波：
+    // 0 档静音（喇叭 + 原「×」）、低档 1 道波、中档 2 道波、高档 3 道波，三档声波同心（圆心 10,12）
     var VOL_BASE = '<path fill="currentColor" d="M4 9h3.5L12 5.5v13L7.5 15H4z"/>';
-    var VOL_ON = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' + VOL_BASE + '</svg>';
-    var VOL_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' + VOL_BASE +
-      '<path fill="currentColor" d="M15.2 8.8l1.3-1.3 2.2 2.2 2.2-2.2 1.3 1.3-2.2 2.2 2.2 2.2-1.3 1.3-2.2-2.2-2.2 2.2-1.3-1.3 2.2-2.2z"/></svg>';
+    var VOL_MUTE_X = '<path fill="currentColor" d="M15.2 8.8l1.3-1.3 2.2 2.2 2.2-2.2 1.3 1.3-2.2 2.2 2.2 2.2-1.3 1.3-2.2-2.2-2.2 2.2-1.3-1.3 2.2-2.2z"/>';
+    var VOL_WAVES = ['',
+      '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M13.3 8.8A4.6 4.6 0 0 1 13.3 15.2"/>',
+      '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M15 7.1A7 7 0 0 1 15 17"/>',
+      '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M16.5 5.5A9.2 9.2 0 0 1 16.5 18.5"/>'];
+    var VOL_SVG = function (inner) {
+      return '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' + inner + '</svg>';
+    };
+    // 0 → 静音；0～1/3 → 1 道；1/3～2/3 → 2 道；2/3～1 → 3 道
+    function volumeTier(v) {
+      if (!(v > 0)) return 0;
+      if (v <= 1 / 3) return 1;
+      if (v <= 2 / 3) return 2;
+      return 3;
+    }
+    function volumeIcon(tier) {
+      if (tier === 0) return VOL_SVG(VOL_BASE + VOL_MUTE_X);
+      var inner = VOL_BASE;
+      for (var i = 1; i <= tier; i++) inner += VOL_WAVES[i];
+      return VOL_SVG(inner);
+    }
     // 三态图标：列表循环 / 不循环保持原 repeat 图标不动；
     // 仅单曲循环换成参考图的圆环双弧 + V 形箭头，并保留「1」作为该态标记
     var LOOP_PATHS = '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17 2l4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/>';
@@ -152,17 +171,20 @@
     }
 
     // 音量状态只在 SitePlayer 里存一份（0～1），图标/滑块都按它渲染：
-    // 0 → 静音图标；>0 → 普通喇叭；滑块值与音量条开合互不影响
-    var volMuted = null;
+    // 图标按四档（静音/1 道波/2 道波/3 道波）跟随音量；滑块值与音量条开合互不影响
+    var volTier = -1;
     function syncVolume(st) {
       if (!muteBtn) return;
       var v = st && typeof st.volume === 'number' ? st.volume : (audioEl ? audioEl.volume : 1);
       if (!(v >= 0)) v = 1;
-      var muted = !(v > 0);
-      if (muted !== volMuted) {
-        volMuted = muted;
-        muteBtn.innerHTML = muted ? VOL_OFF : VOL_ON;
+      var tier = volumeTier(v);
+      // 只在档位变化时换 SVG，拖动的每一帧 input 都会走到这里（逐帧跟随）
+      if (tier !== volTier) {
+        volTier = tier;
+        muteBtn.innerHTML = volumeIcon(tier);
+        muteBtn.setAttribute('data-tier', String(tier));
       }
+      var muted = tier === 0;
       muteBtn.classList.toggle('is-muted', muted);
       muteBtn.setAttribute('aria-label', muted ? '音量（静音）' : '音量');
       muteBtn.title = (muted ? '音量（静音）' : '音量') + '，点击展开或收起音量条';

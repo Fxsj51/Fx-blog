@@ -32,7 +32,7 @@ rightbar:
         </button>
         <span class="music-vol" id="music-vol-wrap">
           <button type="button" class="music-ctl__icon" id="music-mute" aria-label="音量" aria-expanded="false" aria-controls="music-vol-pop" title="音量，点击展开或收起音量条">
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 9h3.5L12 5.5v13L7.5 15H4z"/></svg>
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 9h3.5L12 5.5v13L7.5 15H4z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M13.3 8.8A4.6 4.6 0 0 1 13.3 15.2M15 7.1A7 7 0 0 1 15 17M16.5 5.5A9.2 9.2 0 0 1 16.5 18.5"/></svg>
           </button>
           <span class="music-vol__pop" id="music-vol-pop">
             <input type="range" class="music-vol__range" id="music-vol" min="0" max="100" step="1" value="100" aria-label="音量">

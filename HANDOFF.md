@@ -1,7 +1,7 @@
 # HANDOFF — Fx-blog 交接文档
 
 > 本文件面向"下一轮接手的人/AI"。目标是：读完之后能在**不改坏站点**的前提下继续开发。
-> 最后更新：2026-11-11（第十五批：验证脚本统一改无头，禁止在桌面弹窗）
+> 最后更新：2026-11-11（第十六批：音量图标改四档分级）
 > 状态标记：**【实测】**= 本轮实际跑过/量过；**【推算】**= 按 CSS 公式推导，未在浏览器里量；**【未覆盖】**= 从没跑过。
 
 ---
@@ -735,6 +735,19 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 - 处理：工作区所有验证/截图脚本的 62 处 `spawn(EDGE, …)` 统一带 `--headless=new`；清掉 `--window-position` / `--start-maximized` 等调试参数；`music-seek-headed.js` 更名 `music-seek-verify.js` 并改注释；`seek-real-verify.js` / `verify-lyrics*.js` 的"有头"说明同步改掉。
 - 新增 `smoke-headless.js`：构建产物加载 + 一张截图 + PASS/FAIL 退出码，作为无头可用性的最小冒烟。
 - 规则写进 §11.1：验证脚本默认无头，不得在用户桌面弹窗。【实测】`node smoke-headless.js` PASS（`/music/`、1 个 audio、`scrollWidth=clientWidth=1432`、无 JS 异常），截图 `shots\smoke-headless.png`。
+
+### 第十六批（2026-11-11）：音量图标改四档分级（Windows 样式）
+
+**只动音量图标**（`source/js/music-page.js`、`source/music/index.md`）：
+- 旧的二态 `VOL_ON`/`VOL_OFF` 拆成：`VOL_BASE`（喇叭，原几何未变）+ `VOL_MUTE_X`（原「×」）+ 三道同心弧 `VOL_WAVES[1..3]`。
+- 分档 `volumeTier(v)`：`!(v>0)` → 0；`v<=1/3` → 1；`v<=2/3` → 2；其余 3。0 档 = 喇叭+×，1 档 1 道波、2 档 2 道波、3 档 3 道波。
+- 三道弧同心（圆心 10,12），半径 4.6 / 7.0 / 9.2，±45°，`stroke-width:2`、圆头；弧按档位**累加**（高档同时保留内两道），与系统音量形态一致。
+- `syncVolume(st)` 记住上次档位 `volTier`，只在档位变化时重写 `innerHTML`；拖动滑块的 `input` 事件每帧都调用，所以档位跨过 1/3、2/3 的瞬间图标就换，不用松手；键盘 Left/Right（原生 range）与 `SitePlayer.setVolume` 走同一 snapshot，因此同样逐帧同步。
+- 图标容器 `#music-mute` 尺寸固定（34×34），四档 SVG 均 24 viewBox / 20px，切换不引起控件行抖动；`data-tier` 仅用于测试断言。
+- 音量持久化、静音态（`audio.muted` 恒 false、只用 volume=0）、浮层开合、循环图标三态一律未改。
+
+**验证【实测】**：`npm run build` 通过 + `[breakpoints] 断点校验通过`；`verify-vol-tiers.js` 18/18 PASS——0/0.01/0.33/0.5/0.66/0.99/1 逐档 SVG 实渲染波形数依次 0/1/1/2/2/3/3 且与档位一致、0 档含「×」；真实 CDP 拖动未松手即记录到档位序列 `3,2,2,1,0`；键盘 30→38 由 1 档升 2 档、38→26 回落 1 档；刷新与 SPA 往返后 0.5 仍为 2 道波、全页 1 个 `<audio>`；1440 与 375 均 `scrollWidth===clientWidth`，图标 rect 同为 34×34；无 JS 报错。
+- 截图（工作区，不入库）：`shots\` 下 `vol-tier-0.png`、`vol-tier-1.png`、`vol-tier-33.png`、`vol-tier-50.png`、`vol-tier-66.png`、`vol-tier-99.png`、`vol-tier-100.png`、`vol-tier-0-reload.png`。
 
 
 
