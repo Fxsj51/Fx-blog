@@ -1,7 +1,7 @@
 # HANDOFF — Fx-blog 交接文档
 
 > 本文件面向"下一轮接手的人/AI"。目标是：读完之后能在**不改坏站点**的前提下继续开发。
-> 最后更新：2026-11-11（第十一批：盘缘黑边/不圆 + 圆标方角修正）
+> 最后更新：2026-11-11（第十二批：右栏仅首页 + 文章页左栏固定）
 > 状态标记：**【实测】**= 本轮实际跑过/量过；**【推算】**= 按 CSS 公式推导，未在浏览器里量；**【未覆盖】**= 从没跑过。
 
 ---
@@ -663,6 +663,29 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 - 三档尺寸 120/88/76px、圆标 52%/53%/53%；播放→旋转、暂停→停转、切歌→换图继续转、SPA 音乐页↔首页往返正常；全页 1 个 `<audio>`；`CP-disc-cropped.webp` 请求 200；无 JS 异常；1440/375 无横向溢出；构建与断点校验（1180/1181、900/901）通过。
 - 375 首页迷你盘仍按既有抽屉布局收纳在视口外（`left=345`、抽屉宽 315），375 首页没有可见盘体；375 的盘缘/圆标证据取自音乐页。
 - 截图（工作区，不入库）：`shots\` 下 `edge-music-1440.png`、`edge-music-375.png`、`edge-home-1440.png`（真实背景盘缘放大）、`label-music-1440.png`、`label-music-375.png`、`label-home-1440.png`（非 90° 角圆标放大），`edge-*-probe.png` 为品红底测量图。
+
+### 第十二批（2026-11-11）：右栏仅首页显示 + 文章页左栏固定
+
+**需求**：原来「首页 + 文章页」显示右栏，改为**只有首页**显示；同时文章页左栏要固定，不随页面滚走。断点语义保持 1180/1181、900/901 不变。
+
+**判定改在哪**：
+- 只动 `profiles`：`post.rightbar` 改为 `{ enabled: false, widgets: [] }`；`home.rightbar` 仍为 `{ enabled: true, widgets: [toc] }`；全局 `rightbar.enabled: false` 兜底。右栏是否渲染由服务端 layout 计算并写入 `.site-shell[data-regions]`，无 `rightbar` 时主题根本不输出 `aside#rightbar-region`，未在 inject 里叠任何显隐 hack。
+- 宽度回收沿用已有规则 `.site-shell:not([data-regions~='rightbar']) .site-workspace`：≥1181 为 `calc(340px + --nd-off) minmax(0,1000px)`、`justify-content:start`，`--nd-off = max(0px,(100vw - sbw - 1720px)/2)`；<1181 为 `340px minmax(0,1000px)`。实测 1440 文章页 `mainW=1000`、`mainLeft=340`、右侧余量 92px（视口决定，不再保留 380px 空列）。
+
+**左栏固定方案**：`position: fixed`（不是 sticky）。
+- ≥1181：本就有 `.site-shell:not([data-regions~='rightbar']) aside#leftbar-region{position:fixed}`，横向由 `inset-inline-start: max(0px,(100vw - sbw - 1720px)/2)` 钉住。
+- 901–1180：原 sticky 失效——`.site-workspace` 为防横向溢出设了 `overflow-x:hidden`，自身成了滚动容器，sticky 以它为参照于是跟随页面滚走（实测滚到中段 `top=-1824`）。本批在该区间补 `position: fixed; top: 0`（放在既有的 `@media (min-width:901px)` 块内，**不新增媒体查询字面量**，断点校验零改动）。不写 `inset-inline-start`，保留网格给的静态位置：展开态贴 0、折叠态沿用居中偏移；≥1181 仍由上面的 `--nd-off` 规则接管横向位置，互不覆盖。
+- ≤900：左栏是抽屉（`position:fixed; top:76px; left:16px` + `transform`），固定规则被媒体查询隔离，开合不受影响。
+- 内部滚动：`#leftbar-region .site-region__zone--body` 主题自带 `overflow-y:auto; min-height:0`，栏体固定后内部仍可独立滚到底（未改 CSS）。
+
+**顺带修的空指针**：右栏自定义卡片（农历/黄历/那年今日/一言）是异步回调写 `innerHTML`，SPA 把右栏节点换掉后回调晚到会写 `null`（实测首页报 `TypeError: Cannot set properties of null`）。在 `renderCalendar` / `renderHuangli` / `renderHistory` / `renderQuote` / `useLocalQuote` 及 `loadLunarLibrary` 的 catch 里加了容器存在性守卫。
+
+**验证【实测，右栏 16/16 + 左栏 20/20 PASS】**：
+- 1440 首页 `cols=340px 712.381px 380px`、`data-regions="leftbar rightbar"`；SPA 首页→文章未重载，`data-regions="leftbar"`、`mainW=1000`、`cols=340px 999.99px`、右栏开关 `display:none`；返回首页右栏恢复、主栏回 712；直接打开文章页同样 1000/左缘 340；分类/标签/归档/音乐页均无右栏，`1432/1432` 无横向溢出。
+- 左栏固定（用临时长文 `zz-scroll-test.md` 验证，已删除并重建 public）：1440 滚动到顶/中/底（`scrollY=0/1456/2910`）左栏均 `fixed`、`top=0`、`mainLeft=340`、`sw=cw=1432`；1440×560 时 `zone.scrollHeight/clientHeight=478/217`，滚到底 `scrollTop=261` 且末项底边 = 容器底边 445（底栏内容不被裁）；1024 中段仍 `fixed top=0`、无溢出；375 文章页抽屉 `left` 从 -316 正常滑到 16 再回到 -316，无溢出；SPA 首页→长文→另一篇→返回，`position` 正确建立/撤销且无内联样式残留；全页 1 个 `<audio>`；无 JS 报错。
+- `npm run build` 通过，`[breakpoints] 断点校验通过`。
+- 截图（工作区，不入库）：`shots\` 下 `rightbar-home-1440.png`、`rightbar-post-1440.png`、`leftbar-top-1440.png`、`leftbar-mid-1440.png`、`leftbar-bottom-1440.png`、`leftbar-inner-scroll-1440x560.png`。
+
 
 
 

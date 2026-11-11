@@ -46,12 +46,12 @@ profiles:
     leftbar:
       widgets: [recent]
     rightbar:
-      enabled: true
-      widgets: [toc]
+      enabled: false
+      widgets: []
 
-# 右栏只在首页（文章列表）与文章详情页显示；
-# 其余页面（/music、/about、/categories/、/tags/、/archives/ 等）按 layout 类型默认关闭，
-# 关闭后主题不会渲染 aside，也不会留出第三列。
+# 右栏只在首页（文章列表）显示；文章详情页与其余页面（/music、/about、
+# /categories/、/tags/、/archives/ 等）都不渲染右栏，也不留第三列。
+# 文章页关闭后主栏沿用无右栏布局：正文吃掉右栏腾出的宽度，左缘与首页一致。
 rightbar:
   enabled: false
 
@@ -791,6 +791,17 @@ inject:
         flex-direction: column !important;
         gap: var(--gap-lg) !important;
         align-items: center !important;
+      }
+      /*
+       * 无右栏页面在 901–1180 常驻区间：左栏同样固定。
+       * .site-workspace 为防横向溢出设了 overflow-x: hidden，会把它变成滚动容器，
+       * 左栏的 sticky 因此以 workspace 为参照、跟随页面一起滚走；这里改为 fixed。
+       * 不写 inset-inline-start：保留网格给的静态位置，展开态贴 0、折叠态沿用居中偏移，
+       * ≥1181 时仍由上面的 --nd-off 规则接管横向位置，互不覆盖。
+       */
+      .site-shell:not([data-regions~='rightbar']) aside#leftbar-region {
+        position: fixed !important;
+        top: 0 !important;
       }
       }
 
@@ -1636,7 +1647,10 @@ inject:
             cells.push(`<div class="custom-cal-cell"><div class="custom-cal-num">${d}</div><div class="custom-cal-lunar">${lunarInfo.day}</div></div>`);
           }
         }
-        $('custom-lunar-calendar').innerHTML = `
+        // SPA 换页后右栏节点可能已被替换，异步回调写回前先确认容器仍在
+        const cal = $('custom-lunar-calendar');
+        if (!cal) return;
+        cal.innerHTML = `
           <div class="cal-header"><span>${year} 年 ${month} 月</span></div>
           <div class="custom-cal-grid">${headerCells}${cells.join('')}</div>
         `;
@@ -1644,6 +1658,7 @@ inject:
 
       function renderHuangli() {
         const el = $('custom-huangli');
+        if (!el) return;
         try {
           const now = new Date();
           const solar = Solar.fromDate(now);
@@ -1730,6 +1745,7 @@ inject:
         const dd = pad(now.getDate());
         const titleEl = $('custom-history-title');
         const container = $('custom-history');
+        if (!titleEl || !container) return;
         try {
           const res = await fetch(CONFIG.historyApi + mm + '.json');
           if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1750,6 +1766,7 @@ inject:
       }
 
       async function renderQuote(titleEl, container) {
+        if (!titleEl || !container) return;
         try {
           const res = await fetch(CONFIG.quoteApi);
           if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1771,6 +1788,7 @@ inject:
       }
 
       function useLocalQuote(titleEl, container) {
+        if (!titleEl || !container) return;
         const day = new Date().getDate();
         const text = LOCAL_QUOTES[day % LOCAL_QUOTES.length];
         container.innerHTML = `<div class="quote-item"><span class="quote-mark">「</span>${text}<span class="quote-mark">」</span></div>`;
@@ -1801,7 +1819,8 @@ inject:
           .then(() => { renderCalendar(); renderHuangli(); })
           .catch(err => {
             console.error('[初始化] 农历库加载失败:', err.message);
-            $('custom-huangli').innerHTML = '<div class="error-text">农历库加载失败，请检查网络</div>';
+            const errEl = $('custom-huangli');
+            if (errEl) errEl.innerHTML = '<div class="error-text">农历库加载失败，请检查网络</div>';
           });
         renderHistory();
       }
