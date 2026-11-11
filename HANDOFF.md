@@ -476,5 +476,19 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 
 **附带**：用户替换了 Billie Jean 音频（新文件落盘时带 `(1)` 后缀），已规范回 `michael+jackson-billie+jean.mp3`，`playlist.yml` 路径不变；旧同名文件已被覆盖。
 
+### 本地预览改用 `npm run preview`
+
+**不要再用 `hexo server` 验证音频进度条**：它不返回 `Accept-Ranges`，Range 请求回 200 全量，浏览器 `audio.seekable` 是零宽区间，拖动会被媒体层吞掉（表现为「拖到哪都归 0」）。
+
+`npm run preview`（`tools/preview.js`，零新增依赖，Node 内置 `http`/`fs`）直接服务 `public/`：
+
+- 单段 Range：`206` + `Content-Range` + `Accept-Ranges: bytes` + 精确 `Content-Length`；后缀 `bytes=-N` 取末尾；非法/超出范围回 `416` + `Content-Range: bytes */size`
+- Content-Type 覆盖 `.html/.css/.js/.json/.lrc/.xml/.webp/.png/.jpg/.svg/.mp3/.woff/.woff2/.ttf` 等
+- 目录解析到 `index.html`，没有就 404（不回退首页）
+- 端口默认 `4173`（避开 4000），可用 `npm run preview -- --port 8080` 或 `PORT=8080 npm run preview`
+- 响应带 `Cache-Control: no-cache`，改完产物刷新即生效
+
+实测：mp3 `bytes=1000-1999` → 206/`Content-Range: bytes 1000-1999/11868491`/`Content-Length: 1000`；`bytes=-500` → 206 末尾 500 字节；`bytes=999999999-` → 416；`/music/` 中 `seekable=[0,293.827]`，拖 50% 期望 146.913、落点 147.038（diff 0.125）。
+
 
 

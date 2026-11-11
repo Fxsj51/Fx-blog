@@ -10,6 +10,7 @@
     "measure": "node tools/measure.js",
     "lyrics": "node tools/lyrics.js",
     "lyrics:zh": "node tools/lyrics-zh.js",
+    "preview": "node tools/preview.js",
     "server": "hexo server",
     "postinstall": "patch-package"
   },
