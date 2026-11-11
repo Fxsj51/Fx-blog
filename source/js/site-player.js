@@ -241,7 +241,7 @@
     root.className = 'site-mini';
     root.innerHTML =
       '<button type="button" class="site-mini__disc" data-act="toggle" aria-label="播放或暂停">' +
-        '<img class="site-mini__cover" alt="" width="110" height="110">' +
+        '<img class="site-mini__cover" alt="" width="76" height="76">' +
       '</button>' +
       '<div class="site-mini__info">' +
         '<a class="site-mini__title" href="' + ROOT + 'music/">未选择曲目</a>' +

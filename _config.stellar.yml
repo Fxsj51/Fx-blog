@@ -1238,17 +1238,22 @@ inject:
         color: var(--text-primary);
       }
 
+      /* 首页抽屉黑胶：小尺寸专用（76px）。盘身用 CP-disc.webp（同音乐页素材），
+         按其透明留白与中心孔比例放大到 133.33%；圆标单独取 53%（比音乐页略大），
+         避免 76px 下孔沿抗锯齿露白，同时不压住外圈纹路。 */
       .site-mini__disc {
         position: relative;
         flex: 0 0 auto;
-        width: 110px;
-        height: 110px;
+        width: 76px;
+        height: 76px;
         padding: 0;
         border: none;
         border-radius: var(--radius-circle);
         cursor: pointer;
         overflow: hidden;
-        background: url(__SITE_ROOT__images/CP-disc.webp) center / cover no-repeat;
+        background: url(__SITE_ROOT__images/CP-disc.webp) center / 133.33% 133.33% no-repeat;
+        background-color: #0b0b0c;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, .34);
         animation: site-mini-spin var(--spin-dur) linear infinite;
         animation-play-state: paused;
       }
@@ -1261,11 +1266,26 @@ inject:
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 55%;
-        height: 55%;
+        width: 53%;
+        height: 53%;
         border-radius: var(--radius-circle);
         object-fit: cover;
         transform: translate(-50%, -50%);
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, .5);
+      }
+
+      /* 中心小孔 */
+      .site-mini__disc::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 4px;
+        height: 4px;
+        margin: -2px 0 0 -2px;
+        border-radius: var(--radius-circle);
+        background: #050506;
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, .14);
       }
 
       @keyframes site-mini-spin {

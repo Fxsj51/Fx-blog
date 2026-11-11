@@ -8,7 +8,7 @@ rightbar:
 <div class="music-page">
   <div class="music-now">
     <div class="music-now__disc" id="music-disc">
-      <img src="../images/CP-disc.webp" alt="唱片" id="music-disc-img" width="120" height="120">
+      <img alt="" id="music-disc-img" width="120" height="120">
     </div>
     <div class="music-now__info">
       <p class="music-now__label">当前曲目</p>
@@ -70,9 +70,33 @@ rightbar:
   -webkit-backdrop-filter: var(--music-card-blur);
   backdrop-filter: var(--music-card-blur);
 }
-.music-now__disc { flex: 0 0 auto; width: 120px; height: 120px; border-radius: 50%; overflow: hidden; animation: music-rotate 20s linear infinite; animation-play-state: paused; }
+/* 黑胶：盘身直接用 CP-disc.webp（整圆、带纹路与中心孔），封面缩小叠在正中当圆形 label。
+   该图四周有 12.5% 透明留白、外径占画布 75%，故放大到 133.33% 让盘缘刚好填满 120px；
+   中心透明孔约 49%，label 取 52% 恰好盖住并略压边缘。 */
+.music-now__disc {
+  position: relative; flex: 0 0 auto; width: 120px; height: 120px; border-radius: 50%;
+  overflow: hidden;
+  background: url(../images/CP-disc.webp) center / 133.33% 133.33% no-repeat;
+  background-color: #0b0b0c;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .32);
+  animation: music-rotate 20s linear infinite; animation-play-state: paused;
+}
 .music-now__disc.is-playing { animation-play-state: running; }
-.music-now__disc img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.music-now__disc img {
+  position: absolute; left: 50%; top: 50%; width: 52%; height: 52%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%; object-fit: cover; display: block;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .55), 0 0 6px rgba(0, 0, 0, .45);
+}
+/* 未选曲目时无封面：只显示盘身与中心孔 */
+.music-now__disc img:not([src]) { visibility: hidden; }
+/* 中心小孔（压在圆标之上） */
+.music-now__disc::after {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  width: 6px; height: 6px; margin: -3px 0 0 -3px;
+  border-radius: 50%; background: #050506;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .12);
+}
 .music-now__info { flex: 1 1 auto; min-width: 0; }
 .music-now__label { margin: 0 0 4px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; opacity: .6; }
 .music-now__title { margin: 0; font-size: 20px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -213,6 +237,9 @@ rightbar:
 @media (max-width: 600px) {
   .music-now { flex-direction: column; align-items: flex-start; }
   .music-now__disc { width: 88px; height: 88px; }
+  /* 小尺寸下留白/圆标比例单独调：孔沿抗锯齿更明显，label 略放大到 53% 压住边缘 */
+  .music-now__disc img { width: 53%; height: 53%; }
+  .music-now__disc::after { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; }
   .music-now__title { font-size: 17px; }
   .music-ctl { flex-wrap: wrap; gap: 8px; }
   /* 窄屏一行放不下：按钮/时间排第一行，进度条独占第二行，保证可拖面积 */

@@ -1,7 +1,7 @@
 # HANDOFF — Fx-blog 交接文档
 
 > 本文件面向"下一轮接手的人/AI"。目标是：读完之后能在**不改坏站点**的前提下继续开发。
-> 最后更新：2026-11-10（第二批：构建收敛 + 体积测量口径 + 清理，见 §15）
+> 最后更新：2026-11-11（第十批：唱片改用 CP-disc 位图盘身 + 圆形封面 label）
 > 状态标记：**【实测】**= 本轮实际跑过/量过；**【推算】**= 按 CSS 公式推导，未在浏览器里量；**【未覆盖】**= 从没跑过。
 
 ---
@@ -610,6 +610,36 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 - SPA：播放海阔天空 → 首页迷你条封面/曲名正确且只取 1 张图 → 返回音乐页 5 张封面全对；整轮往返每张封面恰好 2 次请求（各页渲染各 1 次），无同一渲染内的重复并发。
 - 音乐页脚本 0 异常；直接进入 `/music/` 0 异常。SPA 切入音乐页时仍会出现 1 条既有农历库 `innerHTML` TypeError（与本任务无关，保留原状）。
 - 备注：`source/_data/caches/images_metadata.json` 随构建新增 5 条封面元数据，一并提交；原图会被 Hexo 复制进 `public/music/covers/`（未加 ignore，仅构建产物，不入库）。
+
+### 第十批（2026-11-11）：唱片改用用户素材 CP-disc.webp（位图盘身 + 圆形 label）
+
+**根因**：两处唱片都没有"盘身"这层。音乐页 `.music-now__disc` 直接把封面 `img` 铺满 120px 并 `border-radius:50%`，等于用封面圆裁掉了唱片；首页迷你条虽用 `CP-disc.webp` 做背景，但 `background-size:cover` 未按素材实际留白补偿，且封面取 55% 直接压在中心透明孔上，看起来是"黑圈套一张方图"。素材本身：256×256 带 alpha，不透明盘面外径 96px（占画布 75%，四周各 32px 透明），中心透明孔半径 47px ≈ 盘径的 **49%**。
+
+**改法（两处同一套结构，尺寸不同）**：
+
+| 位置 | 盘直径 | 背景尺寸 | label（封面） | 中心孔 |
+| --- | --- | --- | --- | --- |
+| 音乐页 ≥601 | 120px | `center / 133.33% 133.33%` | 52%（62.4px） | 6px |
+| 音乐页 ≤600 | 88px | 同上 | 53%（46.6px） | 5px |
+| 首页右栏迷你条 | 76px（原 110px） | 同上 | 53%（40.3px） | 4px |
+
+- 133.33% = 1/0.75，让盘缘（含透明留白）刚好被 `overflow:hidden` + `border-radius:50%` 裁成填满容器的正圆；`background-color:#0b0b0c` 兜底未选曲时中心孔不露页面背景。
+- 封面改为绝对定位居中 + `object-fit:cover` + `border-radius:50%`，即"中央圆标"，随 `#music-disc` / `.site-mini__disc` 整体旋转，不再出现方形边缘。
+- 小尺寸单独把 label 提到 53%（不是等比例缩放）：76–88px 下孔沿抗锯齿更明显，52% 会在孔边留一圈浅色缝隙，压到 53% 后刚好盖住又不吃掉外圈纹路。
+- 中心孔用 `::after` 小圆点压在 label 上；音乐页未选曲时 `img:not([src]){visibility:hidden}`，只显示盘身与孔。
+- 素材按既有习惯引用：音乐页 `url(../images/CP-disc.webp)`，迷你条走注入变量 `url(__SITE_ROOT__images/CP-disc.webp)`（构建后为 `/images/CP-disc.webp`，兼容 GitHub Pages 子路径）。
+- 之前 CSS 画纹路的方案全部撤掉，源码与构建产物里均无 `repeating-radial-gradient`。
+
+**验证（`npm run build` + `npm run preview` :4173 + 有头 Edge/CDP，19/19 PASS）**：
+
+- 构建通过，断点校验通过（1180/1181、900/901 与注入 JS、patches 一致）；`CP-disc.webp` 请求 200（24,380 字节），两页构建产物均含 `133.33%` 与 `background-color:#0b0b0c`。
+- 音乐页 1440：盘 119.99px、label 62.39px（52%）、`50%` 圆裁 + `cover`；播放→`running`，暂停→`paused`，恢复→`running`；切到海阔天空 label 换成 `haikuotiankong.webp` 且继续转。
+- 音乐页 375：盘 88px、label 46.64px（53%），`375/375` 无横向溢出。
+- 首页 1440 迷你条：盘 76px、label 40.27px（53%）、中心孔 4px，播放中同步旋转，点击暂停停转；`1432/1432` 无溢出。
+- 首页 375：迷你抽屉按既有设计隐藏，`375/375` 无溢出。
+- SPA：播放中 音乐页 → 首页 → 回音乐页，盘 120px、label 仍是当前封面、仍在转，全程 1 个 `<audio>`。
+- 音乐页/播放器脚本 0 JS 异常；截图像素抽样确认盘面为近黑（`#000`–`#1a1a1a`）、label 为封面彩色、外圈无白边。
+- 截图（工作区，不入库）：`C:\Users\XIONG\Documents\Trae-CN\temp_20261110_02\shots\` 下 `music-1440.png`、`disc-music-1440.png`、`home-1440.png`、`mini-home-1440.png`、`music-375.png`、`home-375.png`。
 
 
 
