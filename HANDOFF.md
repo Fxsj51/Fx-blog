@@ -165,7 +165,7 @@ npm run server       # hexo server，本地预览（注意：本地没有 _confi
 
 > 已删除的旧文件：`source/js/aplayer-player.js`（由 `site-player.js` 取代，目录内已确认不存在）；`_multiconfig.yml`（旧配置副本，无引用，已删除且 `.gitignore` 中对应忽略行一并移除）。
 
-> **刻意保留的备份资产**：`source/images/` 下的 `01.png` 1.8MB、`02.jpg` 0.5MB、`03.jpg` 1.7MB、`CP.png` 1.4MB 共约 **5.2MB**，是现有 webp 派生图的原始文件，**当前没有任何页面引用它们**。这是用户明确决定保留的备份，**不是遗留垃圾，不要移动或删除**（它们会随 git 一起分发；如要瘦身需先确认原始文件另有备份）。
+> **已清理的原始图片**：`source/images/` 下的 `01.png` 1.8MB、`02.jpg` 0.5MB、`03.jpg` 1.7MB、`CP.png` 1.4MB 共约 **5.2MB**，是现有 webp 派生图的原始文件，当前没有任何页面引用它们，已由用户清理删除（需要时可从 git 历史找回）。派生图 `01-avatar.webp`、`03-bg*.webp`、`CP-disc*.webp`、`CP-disc-cropped.webp` 仍保留并被页面引用，**不要误删**；`source/music/covers/` 下的原始 jpg/png 同样已清理，只保留 5 张 webp。
 
 ---
 
