@@ -471,6 +471,10 @@ inject:
           max-height: calc(100vh - 16px - 130px - 8px) !important;
           overflow-y: auto !important;
         }
+        /* 播放器收起成 76px 圆盘时只按圆盘预留，上限随状态变化（:has 不支持时退回展开态保守值） */
+        body:has(#music-drawer.is-collapsed) aside#rightbar-region .widget-stack--rightbar {
+          max-height: calc(100vh - 16px - 76px - 20px - 8px) !important;
+        }
       }
 
       aside#leftbar-region {
@@ -998,7 +1002,8 @@ inject:
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        padding: 20px 40px 120px 20px !important; 
+        /* 播放器占位改由 max-height 统一预留，这里不再重复留 120px，否则内容装得下也会滚 */
+        padding: 20px 40px 0 20px !important; 
         box-sizing: border-box !important;
         width: 100% !important;
         overflow-y: auto !important;
