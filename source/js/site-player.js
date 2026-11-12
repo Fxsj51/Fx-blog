@@ -423,6 +423,11 @@
     }
   }
 
+  // 首页判定：站点根路径（归档页的 data-page-type 也是 index，不能只看属性）
+  function isHomePage() {
+    return location.pathname === '/' && document.body.getAttribute('data-page-type') === 'index';
+  }
+
   // 音乐页有自己的大播放器，抽屉不重复；其余页面只看视口断点：≤1180 收起为贴右缘的圆形封面
   function clearCollapseTimer() {
     if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; }
@@ -474,8 +479,9 @@
       drawer.style.setProperty('display', 'none', 'important');
       return;
     }
-    // 只看视口断点：>1180 始终保持整条展开；≤1180 才收起为贴右缘的圆形封面
-    setExpanded(window.innerWidth > 1180, false);
+    // 整条常显只属于首页且视口 >1180；其他页面（含同样是 page-type=index 的归档页）
+    // 无论多宽都默认圆盘，点封面才临时展开
+    setExpanded(isHomePage() && window.innerWidth > 1180, false);
   }
 
   window.SitePlayer = {
@@ -521,9 +527,13 @@
   window.addEventListener('resize', syncDrawer);
 
   // 展开态点组件以外的任意位置立即收回（捕获阶段，元素 stopPropagation 也拦不住）；
-  // 只看真实指针事件，程序化派发的 click（isTrusted=false）不算用户操作
+  // 只看真实指针事件，程序化派发的 click（isTrusted=false）不算用户操作；
+  // 仅 >1180 且非首页生效（≤1180 本身就是圆盘收起态，点哪都不收）
   function onDocPointerDown(e) {
     if (!expanded || e.isTrusted === false) return;
+    if (window.innerWidth <= 1180) return;
+    // 首页不因点外部收起
+    if (isHomePage()) return;
     var drawer = document.getElementById('music-drawer');
     if (!drawer) return;
     var path = typeof e.composedPath === 'function' ? e.composedPath() : null;
@@ -532,9 +542,9 @@
   }
   document.addEventListener('pointerdown', onDocPointerDown, true);
 
-  // Escape 收起
+  // Escape 收起（同样只在大屏生效，≤1180 靠点封面或 8s 计时）
   document.addEventListener('keydown', function (e) {
-    if (!expanded) return;
+    if (!expanded || window.innerWidth <= 1180) return;
     if (e.key === 'Escape' || e.key === 'Esc') setExpanded(false, false);
   }, true);
 })();

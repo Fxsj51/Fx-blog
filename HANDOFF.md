@@ -801,7 +801,7 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 - 收起态：`width:76px; right:8px; bottom:24px`，只显示 `.site-mini__disc`；盘身沿用 `CP-disc-cropped.webp`，中心 53% 圆形曲目封面（与迷你条/音乐页同一套 label 裁圆），`border-radius:50%` 不露方角。
 - 尺寸取舍：左栏头像实测 48×48；封面沿用组件里既有的 76px 唱片，这样收起/展开是同一枚盘在缩放移动，不会出现 76→48 的尺寸跳变（属同一量级，且与小尺寸黑胶既有视觉一致）。
 - 展开态：`width:360px; right:30px; bottom:30px`，`.site-mini` 恢复原 padding/底板/信息区，布局与控件完全不变。
-- 出现条件：只看视口断点——`≤1180` 收起为圆封面，`>1180` 所有页面（首页/文章/分类/标签/归档/关于等）都保持整条展开，与页面类型无关；`/music/` 有大播放器，抽屉整体 `display:none` 不重复；空歌单不出现。
+- 出现条件（最终口径，见修正 2）：整条常显只属于首页且 >1180；其他页面一律默认圆盘、点封面临时展开；`/music/` 有大播放器，抽屉整体 `display:none` 不重复；空歌单不出现。
 
 **交互**：
 - 点圆形封面 = 展开/收起（`aria-expanded` 同步，`aria-label`/`title` 在「展开播放器 / 收起播放器」间切换）；封面不再是播放/暂停按钮，播放/暂停仍在条内按钮。
@@ -822,16 +822,38 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 
 #### 第十九批修正（2026-11-12）：宽屏不收起 / 唱片要转 / 暂停一次到位
 
-1. **宽屏不该收起**：`syncDrawer()` 原来用 `!!#rightbar-region && width>1180` 判定，无右栏页面（文章/关于/分类/标签/归档）即使 >1180 也会收起。改为纯视口判定 `window.innerWidth > 1180`，页面类型不再参与；`/music/` 仍因有大播放器整体隐藏。`resize` 监听沿用，1180↔1181 双向切换只由 `setExpanded()` 切 class，无内联样式残留。
+1. **宽屏不该收起**：`syncDrawer()` 原来用 `!!#rightbar-region && width>1180` 判定，无右栏页面（文章/关于/分类/标签/归档）即使 >1180 也会收起。先改为纯视口判定（后被修正 2 进一步收窄：只有首页 >1180 常显整条）；`resize` 监听沿用，断点切换只由 `setExpanded()` 切 class，无内联样式残留。
 2. **唱片不转**：批 19 加的 `@media (prefers-reduced-motion: reduce) { .site-mini__disc { animation:none } }` 命中本机（Windows 关闭了「动画效果」，`matchMedia` 返回 reduce），两态都停转。删除该规则；旋转仍作用在 `.site-mini__disc`（盘身背景 + 53% 封面 + 中心孔整体），`#music-drawer` 的 transition 只覆盖 `width/right/bottom/transform/opacity`，`.site-mini` 只覆盖 `padding/background/border-color/box-shadow`，不会覆盖 `animation`/`transform`；节点不重建，`is-playing` 随播放事件即时切换。
 3. **暂停要点两下**：`renderMini()` 每次 `timeupdate`（约 250ms 一次）都 `innerHTML` 重建播放/暂停图标；若 timeupdate 落在 mousedown 与 mouseup 之间，按下的 SVG 节点被替换，浏览器判定 press/release 目标不同，不再派发 `click`。改为用 `data-playing` 守卫，只在播放状态真正变化时重建图标与 aria-label。
 
 **验证【实测】**：`npm run build` + 断点校验通过；`verify-fix19.js` **32/32 PASS**（真实 pointer 事件、未模拟 no-preference）：
-- >1180 首页/文章/分类/归档/关于均为整条展开（360px、信息区 flex、`is-collapsed` 不在）；文章页停 9.5s 不自动收起；五页 `sw===cw`。
+- >1180 首页/文章/分类/归档/关于均为整条展开（360px、信息区 flex、`is-collapsed` 不在）；文章页停 9.5s 不自动收起；五页 `sw===cw`。（该批口径已被修正 2 取代：其他页面默认圆盘）
 - 本机 reduce 环境下 `animation-name` 仍为 `site-mini-spin`；展开态与收起态播放时 transform 在 600ms 内变化、`running`，暂停后两帧一致、`paused`。
 - 播放/暂停按钮 20 次真实单击 20 次翻转（0/1 交替无漏），连点 5.5s 内面板未被收起；下一首单击生效；切歌封面 `billie-jean.webp`→`come-and-get-your-love.webp`。
 - 1180/375 为 76px 圆封面；1181 恢复 360px 且无内联残留，再回 1180 稳定在 76（无过渡中间值）；点外部/Esc 仍立即收回；音乐页抽屉 `display:none`、全页 1 个 `<audio>`；全程无 JS 报错。
 - 截图：`shots\feature19-1440-article-expanded.png`、`shots\feature19-1180-collapsed.png`、`shots\feature19-375-collapsed.png`。
+
+#### 第十九批修正 2（2026-11-12）：整条常显只属于首页，其他页面默认圆盘
+
+**规则表（默认态）**：
+
+| 页面 | >1180 | ≤1180 |
+| --- | --- | --- |
+| 首页（`pathname==='/'` 且 `data-page-type==='index'`） | 整条 360px 常显；点外部不收 | 76px 圆盘；点封面展开，8s 收回 |
+| 其他页面（文章/关于/分类/标签/归档等） | 76px 圆盘；点封面展开，8s / 点外部 / Esc 收回 | 76px 圆盘；点封面展开，仅 8s 收回（点外部、Esc 不生效） |
+
+- 默认态由 `syncDrawer()` 的 `isHomePage() && innerWidth > 1180` 决定，`stellar:navigation-complete` 与 `resize` 都会重算，SPA 双向切换即时切对。
+- `isHomePage()` 用 `location.pathname === '/'` 且 `body[data-page-type="index"]`——归档页也是 `data-page-type="index"`，不能只看属性。
+- 外部点击与 Esc 的监听只注册一次，入口按 `innerWidth > 1180` 提前 return（≤1180 不生效）；首页再额外排除点外部收起。不动态增删监听，跨断点来回无重复绑定。
+- 8s 计时与点封面展开/收起不受宽度影响（只对"用户主动展开"计时，首页默认常显不挂计时）。
+
+**验证【实测】**：`npm run build` + 断点校验通过；`verify-fix19d.js` **25/25 PASS**：
+- 1440 首页 360 常显、点外部不收、Esc 可手动收；SPA 到文章页立刻 76 圆盘，停 9s 不自动摊开。
+- 文章页点封面展开 360、8s 自动收回、点外部收回、Esc 收回；关于/分类/归档 1440 下初始均 76 圆盘且无横向溢出。
+- SPA 回首页立刻恢复 360。
+- 1180 首页 76 圆盘，展开后点外部/Esc 均不生效，靠封面收回；375 文章页 76 圆盘、点开不溢出、点外部不生效。
+- 全页 1 个 `<audio>`、无 JS 报错。
+- 截图：`shots\feature19d-1440-home-expanded.png`、`shots\feature19d-1440-article-collapsed.png`、`shots\feature19d-1440-article-expanded.png`。
 
 
 
