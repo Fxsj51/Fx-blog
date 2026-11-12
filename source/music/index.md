@@ -126,7 +126,12 @@ rightbar:
   background: rgba(127, 127, 127, .12); color: inherit; cursor: pointer;
 }
 .music-ctl__icon:hover { background: rgba(127, 127, 127, .22); }
-.music-ctl__icon:focus-visible, .music-seek:focus-visible, .music-now__disc:focus-visible { outline: 2px solid #1DB954; outline-offset: 2px; }
+/* 音乐页内所有可聚焦控件的键盘焦点一律不画焦点环：主题与本页的焦点提示都用 outline 表达
+   （2px 主题色/绿色），这里按整页作用域一次覆盖，点击与键盘两条路径都不显示。
+   outline 不参与布局，置 none 不会产生 1px 位移；键盘操作与 role/aria 全部保留。
+   !important 用于压过主题注入的更高特异度规则（如 :root .ui-interactive:focus-visible）。 */
+.music-page :focus,
+.music-page :focus-visible { outline: none !important; }
 .music-ctl__icon.is-muted { opacity: .45; }
 .music-ctl__icon.is-off { opacity: .4; }
 /* 等宽数字 + 固定最小宽度：拖动时 0:59→1:00、总时长载入后位数变化都不再挤动轨道（否则
@@ -161,7 +166,6 @@ rightbar:
 .music-vol__pop::after { content: ''; position: absolute; left: 0; right: 0; bottom: -12px; height: 12px; }
 .music-vol.is-open .music-vol__pop { opacity: 1; visibility: visible; transform: none; pointer-events: auto; }
 .music-vol__range { width: 120px; margin: 0; accent-color: #1DB954; }
-.music-vol__range:focus-visible { outline: 2px solid #1DB954; outline-offset: 2px; }
 .music-list-card { border-radius: 16px; background: var(--music-card-bg); border: 1px solid var(--music-card-border); overflow: hidden; -webkit-backdrop-filter: var(--music-card-blur); backdrop-filter: var(--music-card-blur); }
 .music-list__head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid rgba(127, 127, 127, 0.16); font-weight: 600; }
 .music-list__count { font-size: 12px; font-weight: 400; opacity: .6; }
