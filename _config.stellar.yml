@@ -115,6 +115,59 @@ inject:
   head_end: |
     <link rel="preload" as="image" href="__SITE_ROOT__images/03-bg-1600.webp" fetchpriority="high" media="(min-width: 901px)">
     <link rel="preload" as="image" href="__SITE_ROOT__images/03-bg-900.webp" fetchpriority="high" media="(max-width: 900px)">
+    <!-- GoatCounter：关闭自带 onload 计数，首屏与 SPA 换页统一走下面这个入口，路径按站内相对路径归一 -->
+    <script data-stellar-script="site">
+      (function() {
+        var state = window.__gcState;
+        function normPath() {
+          var root = '__SITE_ROOT__';
+          var p = location.pathname;
+          if (root && root !== '/') {
+            if (p.indexOf(root) === 0) p = '/' + p.slice(root.length);
+            else if (p === root.replace(/\/$/, '')) p = '/';
+          }
+          p = p.replace(/\/index\.html$/, '/').replace(/\/{2,}/g, '/');
+          if (p.charAt(0) !== '/') p = '/' + p;
+          if (p.charAt(p.length - 1) !== '/') p += '/';
+          return p;
+        }
+        window.goatcounter = window.goatcounter || {};
+        window.goatcounter.no_onload = true;
+        if (!state) state = window.__gcState = { last: null, ready: false, pending: null };
+        function count(p) {
+          var gc = window.goatcounter;
+          if (!gc || typeof gc.count !== 'function') return;
+          gc.count({ path: p });
+        }
+        function flush() {
+          var gc = window.goatcounter;
+          if (!gc || typeof gc.count !== 'function' || state.ready) return;
+          state.ready = true;
+          state.last = state.pending || normPath();
+          state.pending = null;
+          count(state.last);
+        }
+        if (!window.__gcBound) {
+          window.__gcBound = true;
+          document.addEventListener('stellar:navigation-complete', function() {
+            var p = normPath();
+            if (!state.ready) { state.pending = p; return; }
+            if (p === state.last) return;
+            state.last = p;
+            count(p);
+          });
+          // count.js 为 async：加载完成后补记首屏；被拦截或加载失败则静默跳过
+          var timer = setInterval(function() {
+            if (window.goatcounter && typeof window.goatcounter.count === 'function') {
+              clearInterval(timer);
+              flush();
+            }
+          }, 150);
+          setTimeout(function() { clearInterval(timer); }, 10000);
+        }
+      })();
+    </script>
+    <script data-goatcounter="https://feixiao.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
     <!-- 播放器只在有右栏的页面（首页/文章页）显示；音乐页用卡片，移动端 ≤1180 由 CSS 隐藏 -->
     <script src="__SITE_ROOT__js/site-player.js" data-stellar-script="site" defer></script>
 

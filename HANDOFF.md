@@ -122,6 +122,14 @@ npm run server       # hexo server，本地预览（注意：本地没有 _confi
 - 折叠态要复现首页同样的 138px 位移（右栏列 380 的一半），用 `min(138px, max(0px, (100vw - var(--sbw) - 1444px) / 2))` 渐进，1366 等窄屏位移为 0。
 - 音乐页 `≥1600` 的右缘对齐也用同一套变量（见 §6 注释）。
 
+### 4.6 访问统计 —— GoatCounter
+
+- 接入方式：`_config.stellar.yml` 的 `inject.head_end`，`<script data-goatcounter="https://feixiao.goatcounter.com/count" async src="https://gc.zgo.at/count.js">`；无 cookie，async 不阻塞渲染，被拦截时静默失效。
+- 关掉了脚本自带的 onload 计数（在加载前写 `window.goatcounter.no_onload = true`），首屏与 SPA 换页统一由同一段内联脚本计数，避免双计与路径分裂。
+- 路径归一：以 `location.pathname` 为准，去掉构建期 `__SITE_ROOT__`（如 `/Fx-blog/`）前缀、去 `index.html`、合并重复斜杠、补尾斜杠；query/hash 本就不在 `pathname` 里。例：`/Fx-blog/music/` → `/music/`。仅当路径与上次计数不同才 `count({path})`，同页重复点击与 hash 跳转不记。
+- 计数入口：监听 `spa.js` 的 `stellar:navigation-complete`；脚本 async 未就绪时只暂存最新路径，加载完成后的 150ms 轮询补记一次首屏/最新页。
+- 后台看数据：登录 [feixiao.goatcounter.com](https://feixiao.goatcounter.com)，`/`、`/music/`、`/2026/11/04/hello-world/` 这类站内相对路径即为条目名。
+
 ---
 
 ## 5. 硬约束（写代码前逐条对照）

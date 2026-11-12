@@ -120,6 +120,8 @@
     for (var i = 0; i < nodes.length; i++) {
       var s = nodes[i];
       if (s.hasAttribute('data-stellar-script')) continue;
+      // 统计脚本（GoatCounter）常驻 head、不需要换页重放，不参与兼容性判定
+      if (s.hasAttribute('data-goatcounter')) continue;
       var type = (s.getAttribute('type') || '').trim().toLowerCase();
       if (type && type !== 'text/javascript' && type !== 'application/ecmascript' && type !== 'text/ecmascript') continue;
       return true;
