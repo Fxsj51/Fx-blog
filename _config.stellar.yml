@@ -1,10 +1,10 @@
 # ==========================================
-# Stellar v2 个人配置 (完美防误触版)
+# Stellar v2 个人配置
 # ==========================================
 
 leftbar:
   brand:
-    name: "Fx的博客"
+    name: "Feixiao"
     tagline: "记录生活，分享技术"
     image:
       src: /images/01-avatar.webp
@@ -79,7 +79,7 @@ footer:
   #   - 备案号 ICP / 公安备案（如有）
   #   - 社交账号或联系方式（如有）
   content: |
-    © 2026 Fx的博客 · 由 [Hexo](https://hexo.io/) 与 [Stellar 2.0.0](https://github.com/xaoxuu/hexo-theme-stellar) 构建。
+    © 2026 Feixiao · 由 [Hexo](https://hexo.io/) 与 [Stellar 2.0.0](https://github.com/xaoxuu/hexo-theme-stellar) 构建。
 
 appearance:
   preset: flat

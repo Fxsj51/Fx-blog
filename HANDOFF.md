@@ -10,7 +10,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| 站点 | Hexo 博客「Fx的博客」，部署到 GitHub Pages **项目页子路径 `/Fx-blog/`** |
+| 站点 | Hexo 博客「Feixiao」，部署到 GitHub Pages **项目页子路径 `/Fx-blog/`** |
 | 生成器 | Hexo 8.1.2（`package.json` 里 `hexo: ^8.0.0`） |
 | 主题 | `hexo-theme-stellar` **2.0.0（已锁版本，不要升级）** |
 | 渲染 | `hexo-renderer-ejs` / `hexo-renderer-marked` / `hexo-renderer-stylus` |
