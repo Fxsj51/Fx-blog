@@ -97,13 +97,12 @@ appearance:
 search:
   provider: local
 
-# 第三方资源预连接（农历库、历史/一言接口、文章封面与二维码）
+# 第三方资源预连接（农历库、一言接口、文章封面与二维码）
 preconnect:
   - https://cdn.jsdelivr.net
   - https://unpkg.com
   - https://gcore.jsdelivr.net
-  - https://baike.baidu.com
-  - https://uapis.cn
+  - https://v1.hitokoto.cn
   - https://api.qrserver.com
 
 features:
@@ -1141,26 +1140,9 @@ inject:
         justify-content: center !important;
         gap: var(--gap-sm) !important;
       }
-      .history-title i { color: var(--accent) !important; }
-      #custom-history {
+      #custom-quote {
         font-size: var(--fs-13) !important;
         line-height: var(--lh-copy) !important;
-        max-height: 200px !important;
-        overflow-y: auto !important;
-      }
-      .history-item {
-        margin-bottom: var(--gap-md) !important;
-        border-bottom: var(--border-w) dashed var(--white-10) !important;
-        padding-bottom: var(--gap-md) !important;
-      }
-      .history-year {
-        color: var(--accent) !important;
-        margin-right: var(--gap-xs) !important;
-        font-weight: var(--fw-semibold) !important;
-      }
-      .history-content {
-        color: var(--white-85) !important;
-        font-size: var(--fs-13) !important;
       }
       .quote-item {
         margin-bottom: var(--gap-md) !important;
@@ -1169,16 +1151,28 @@ inject:
         line-height: var(--lh-copy) !important;
         font-size: var(--fs-14) !important;
       }
+      /* 正文固定占 3 行（不足补齐、超出以省略号收尾），句子长短不改变卡片高度 */
+      .quote-text {
+        display: -webkit-box !important;
+        -webkit-box-orient: vertical !important;
+        -webkit-line-clamp: 3 !important;
+        overflow: hidden !important;
+        min-height: calc(3 * var(--lh-copy) * 1em) !important;
+      }
       .quote-mark {
         color: var(--accent) !important;
         font-size: var(--fs-18) !important;
         font-weight: var(--fw-bold) !important;
         font-family: serif !important;
+        /* 引号字号更大，但不参与行高计算，避免撑高首尾行导致卡片高度跳动 */
+        line-height: 0 !important;
       }
       .quote-author {
         text-align: right !important;
         color: var(--text-muted) !important;
         font-size: var(--fs-12) !important;
+        /* 兜底文案没有出处时也保留一行高度，避免卡片忽高忽低 */
+        min-height: calc(var(--lh-copy) * 1em) !important;
       }
 
       #music-drawer {
@@ -1576,9 +1570,8 @@ inject:
           'https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js',
           'https://unpkg.com/lunar-javascript/lunar.js'
         ],
-        historyApi: 'https://baike.baidu.com/cms/home/eventsOnHistory/',
-        quoteApi: 'https://uapis.cn/api/v1/saying/random?mode=daily',
-        maxHistoryItems: 3
+        hitokotoApi: 'https://v1.hitokoto.cn/?encode=json&charset=utf-8&c=d&c=i',
+        quoteTimeout: 3000
       };
 
       const LOCAL_QUOTES = [
@@ -1606,7 +1599,6 @@ inject:
 
       const lunarCache = new Map();
       const $ = (id) => document.getElementById(id);
-      const pad = (n) => String(n).padStart(2, '0');
       const hasChinese = (str) => /[\u4e00-\u9fa5]/.test(str);
       const escapeHtml = (value) => String(value == null ? '' : value)
         .replace(/&/g, '&amp;')
@@ -1763,65 +1755,49 @@ inject:
         return { name: '元旦', daysLeft: 0 };
       }
 
-      async function renderHistory() {
-        const now = new Date();
-        const mm = pad(now.getMonth() + 1);
-        const dd = pad(now.getDate());
-        const titleEl = $('custom-history-title');
-        const container = $('custom-history');
-        if (!titleEl || !container) return;
+      // 取一句一言：3 秒超时，失败返回 null 由调用方走本地兜底
+      async function fetchHitokoto() {
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        const timer = controller ? setTimeout(() => controller.abort(), CONFIG.quoteTimeout) : null;
         try {
-          const res = await fetch(CONFIG.historyApi + mm + '.json');
+          const res = await fetch(CONFIG.hitokotoApi, controller ? { signal: controller.signal } : undefined);
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const data = await res.json();
-          const list = data[mm + dd] || [];
-          if (list.length > 0) {
-            const items = [...list].sort(() => 0.5 - Math.random()).slice(0, CONFIG.maxHistoryItems);
-            container.innerHTML = items.map(it =>
-              `<div class="history-item"><span class="history-year">${escapeHtml(it.year)}</span><span class="history-content">${escapeHtml(it.title)}</span></div>`
-            ).join('');
-            titleEl.textContent = '那年今日';
-            return;
-          }
-        } catch (e) {
-          console.warn('[历史] API 请求失败:', e.message);
+          const text = String(data?.hitokoto || '').trim();
+          if (!hasChinese(text)) return null;
+          const from = String(data?.from_who || data?.from || '').trim();
+          return { text, from };
+        } finally {
+          if (timer) clearTimeout(timer);
         }
-        await renderQuote(titleEl, container);
       }
 
-      async function renderQuote(titleEl, container) {
-        if (!titleEl || !container) return;
+      async function renderQuote() {
+        const container = $('custom-quote');
+        if (!container) return;
+        let quote = null;
         try {
-          const res = await fetch(CONFIG.quoteApi);
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const data = await res.json();
-          const content = data?.item?.content || '';
-          const author = data?.item?.author || '';
-          if (hasChinese(content) && content.length > 0) {
-            container.innerHTML = `
-              <div class="quote-item"><span class="quote-mark">「</span>${escapeHtml(content)}<span class="quote-mark">」</span></div>
-              ${author ? `<div class="quote-author">—— ${escapeHtml(author)}</div>` : ''}
-            `;
-            titleEl.textContent = '今日诗词';
-            return;
-          }
+          quote = await fetchHitokoto();
         } catch (e) {
-          console.warn('[一言] API 请求失败:', e.message);
+          console.warn('[一言] API 请求失败:', e && e.message);
         }
-        useLocalQuote(titleEl, container);
-      }
-
-      function useLocalQuote(titleEl, container) {
-        if (!titleEl || !container) return;
-        const day = new Date().getDate();
-        const text = LOCAL_QUOTES[day % LOCAL_QUOTES.length];
-        container.innerHTML = `<div class="quote-item"><span class="quote-mark">「</span>${text}<span class="quote-mark">」</span></div>`;
-        titleEl.textContent = '每日一言';
+        // SPA 换页已替换右栏时放弃写入，避免写到被丢弃的旧节点上
+        if (!container.isConnected) return;
+        if (!quote) {
+          const day = new Date().getDate();
+          quote = { text: LOCAL_QUOTES[day % LOCAL_QUOTES.length], from: '' };
+        }
+        container.innerHTML = `
+          <div class="quote-item">
+            <div class="quote-text"><span class="quote-mark">「</span>${escapeHtml(quote.text)}<span class="quote-mark">」</span></div>
+            <div class="quote-author">${quote.from ? '—— ' + escapeHtml(quote.from) : ''}</div>
+          </div>
+        `;
       }
 
       function initCard() {
         const rightbarWidgets = document.querySelector('.widget-stack--rightbar');
-        // 无右栏页面不渲染 aside，也就不会加载农历库/历史/一言接口
+        // 无右栏页面不渲染 aside，也就不会加载农历库/一言接口
         if (!rightbarWidgets || !document.getElementById('rightbar-region')) return;
         // 幂等：只移除自己注入的卡片，保留主题渲染的挂件（文章页的「本文目录」#data-toc）。
         // 之前整体清空 innerHTML 会把目录一起删掉。
@@ -1833,10 +1809,9 @@ inject:
             <div id="custom-huangli" class="error-text">正在获取今日黄历...</div>
             <div class="card-divider"></div>
             <div class="history-title">
-              <i class="fas fa-clock" style="color: var(--accent);"></i>
-              <span id="custom-history-title">那年今日</span>
+              <span>每日一言</span>
             </div>
-            <div id="custom-history" style="font-size: var(--fs-13); line-height: var(--lh-copy); max-height: 200px; overflow-y: auto;">正在拉取历史事件...</div>
+            <div id="custom-quote">正在加载一言...</div>
           </div>
         `);
         loadLunarLibrary()
@@ -1846,13 +1821,13 @@ inject:
             const errEl = $('custom-huangli');
             if (errEl) errEl.innerHTML = '<div class="error-text">农历库加载失败，请检查网络</div>';
           });
-        renderHistory();
+        renderQuote();
       }
 
       let cardInitializedOn = null;
       function initCardOnce() {
         const region = document.getElementById('rightbar-region');
-        // 无右栏页面不渲染 aside，也不加载农历库/历史/一言接口
+        // 无右栏页面不渲染 aside，也不加载农历库/一言接口
         if (!region) return;
         // SPA 换页会替换右栏节点，需要按新节点重新初始化
         if (cardInitializedOn === region) return;
