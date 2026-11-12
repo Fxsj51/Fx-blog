@@ -152,10 +152,20 @@
       paintTimes(st);
     }
 
+    // 唱片与下方播放按钮共用 player.toggle() 这一套状态：两边的图标/文案/aria 都在这里同步，
+    // 不各存一份，避免「按钮显示暂停、点唱片却变成播放」的错位
     function syncToggle(st) {
-      if (!toggleBtn) return;
-      toggleBtn.innerHTML = st.playing ? ICON_PAUSE : ICON_PLAY;
-      toggleBtn.setAttribute('aria-label', st.playing ? '暂停' : '播放');
+      var label = st.playing ? '暂停' : '播放';
+      var pressed = st.playing ? 'true' : 'false';
+      if (toggleBtn) {
+        toggleBtn.innerHTML = st.playing ? ICON_PAUSE : ICON_PLAY;
+        toggleBtn.setAttribute('aria-label', label);
+        toggleBtn.setAttribute('aria-pressed', pressed);
+      }
+      if (disc) {
+        disc.setAttribute('aria-label', label);
+        disc.setAttribute('aria-pressed', pressed);
+      }
     }
 
     function syncLoop(st) {
@@ -334,6 +344,18 @@
     if (audioEl) audioEl.addEventListener('loadedmetadata', onLoadedMeta);
 
     if (toggleBtn) toggleBtn.addEventListener('click', function () { player.toggle(); });
+
+    // 唱片本体也是播放开关。点击只走 player.toggle()，不碰 DOM 结构（只改 class 与 aria），
+    // 因此 pointerdown 与 pointerup 之间节点不会被替换，连续点击不会丢事件
+    if (disc) {
+      disc.addEventListener('click', function () { player.toggle(); });
+      disc.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+        if (e.repeat) return; // 长按不重复触发，一次按键只切一次
+        e.preventDefault(); // 拦住 Space 的翻页滚动
+        player.toggle();
+      });
+    }
 
     // ---------------- 音量条：默认收起，点按或悬停展开，再点收起 ----------------
     // 浮层是绝对定位的，展开/收起不参与控件行布局（不挤动其它控件、不产生横向滚动）

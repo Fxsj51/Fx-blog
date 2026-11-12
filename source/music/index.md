@@ -7,7 +7,7 @@ rightbar:
 
 <div class="music-page">
   <div class="music-now">
-    <div class="music-now__disc" id="music-disc">
+    <div class="music-now__disc" id="music-disc" role="button" tabindex="0" aria-label="播放" aria-pressed="false" title="点击播放或暂停">
       <img alt="" id="music-disc-img" width="120" height="120">
     </div>
     <div class="music-now__info">
@@ -17,7 +17,7 @@ rightbar:
       <p class="music-now__credits" id="music-now-credits" hidden></p>
       <audio id="music-audio" preload="none"></audio>
       <div class="music-ctl">
-        <button type="button" class="music-ctl__icon" id="music-toggle" aria-label="播放">
+        <button type="button" class="music-ctl__icon" id="music-toggle" aria-label="播放" aria-pressed="false">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 5l12 7-12 7z"/></svg>
         </button>
         <span class="music-ctl__time" id="music-cur">0:00</span>
@@ -84,6 +84,8 @@ rightbar:
   overflow: hidden;
   background: url(../images/CP-disc-cropped.webp) center / 100% 100% no-repeat;
   animation: music-rotate 20s linear infinite; animation-play-state: paused;
+  /* 唱片本体就是播放开关：暂停只切 animation-play-state，角度原地保留，继续时从这里接着转 */
+  cursor: pointer;
 }
 .music-now__disc.is-playing { animation-play-state: running; }
 /* 未选曲时中心孔兜底：只垫一块与盘面同色的圆标大小圆，不用整块深色背景 */
@@ -124,7 +126,7 @@ rightbar:
   background: rgba(127, 127, 127, .12); color: inherit; cursor: pointer;
 }
 .music-ctl__icon:hover { background: rgba(127, 127, 127, .22); }
-.music-ctl__icon:focus-visible, .music-seek:focus-visible { outline: 2px solid #1DB954; outline-offset: 2px; }
+.music-ctl__icon:focus-visible, .music-seek:focus-visible, .music-now__disc:focus-visible { outline: 2px solid #1DB954; outline-offset: 2px; }
 .music-ctl__icon.is-muted { opacity: .45; }
 .music-ctl__icon.is-off { opacity: .4; }
 /* 等宽数字 + 固定最小宽度：拖动时 0:59→1:00、总时长载入后位数变化都不再挤动轨道（否则
