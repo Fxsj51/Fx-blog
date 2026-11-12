@@ -465,6 +465,11 @@ inject:
         html[data-leftbar-state="collapsed"] .site-shell:not([data-regions~='rightbar']) aside#leftbar-region {
           transform: translateX(min(138px, max(0px, (100vw - var(--sbw, 8px) - 1444px) / 2))) !important;
         }
+        /* 常驻右栏内容区止于右下角迷你播放器上方（预留 8px），内容超出在栏内滚动，避免卡片压住播放器 */
+        aside#rightbar-region .widget-stack--rightbar {
+          max-height: calc(100vh - 16px - 140px - 8px) !important;
+          overflow-y: auto !important;
+        }
       }
 
       aside#leftbar-region {
@@ -589,9 +594,10 @@ inject:
           position: fixed !important;
           top: 16px !important;
           right: 16px !important;
-          bottom: 16px !important;
+          /* 底部留出收起态迷你播放器的高度 + 8px 间隙，抽屉内容不会压住播放器 */
+          bottom: calc(16px + 98px) !important;
           height: auto !important;
-          max-height: calc(var(--dvh) - 32px) !important;
+          max-height: calc(var(--dvh) - 130px) !important;
           width: min(380px, 85vw) !important;
           min-width: 0 !important;
           max-width: min(380px, 85vw) !important;
@@ -610,6 +616,8 @@ inject:
         aside#rightbar-region .widget-stack--rightbar {
           padding: 0 0 80px 0 !important; 
           height: 100% !important;
+          /* 与抽屉同高（上下各留 16px 与播放器区 98px），内容超出在抽屉内滚动 */
+          max-height: calc(var(--dvh) - 130px) !important;
           overflow-y: auto !important;
         }
 
@@ -1131,11 +1139,11 @@ inject:
         text-align: center !important;
       }
 
-      /* 标题文字已移除：用上下内边距补回标题占用的 28.8px，卡片总高与改动前一致 */
+      /* 标题文字已移除：正文固定 2 行，上下内边距收紧后卡片更矮 */
       #custom-quote {
         font-size: var(--fs-13) !important;
         line-height: var(--lh-copy) !important;
-        padding: 6px 0 22.8px !important;
+        padding: 2px 0 8px !important;
       }
       .quote-item {
         margin-bottom: var(--gap-md) !important;
@@ -1145,13 +1153,13 @@ inject:
         line-height: var(--lh-copy) !important;
         font-size: var(--fs-14) !important;
       }
-      /* 正文固定占 3 行（不足补齐、超出以省略号收尾），句子长短不改变卡片高度 */
+      /* 正文固定占 2 行（不足补齐、超出以省略号收尾），句子长短不改变卡片高度 */
       .quote-text {
         display: -webkit-box !important;
         -webkit-box-orient: vertical !important;
-        -webkit-line-clamp: 3 !important;
+        -webkit-line-clamp: 2 !important;
         overflow: hidden !important;
-        min-height: calc(3 * var(--lh-copy) * 1em) !important;
+        min-height: calc(2 * var(--lh-copy) * 1em) !important;
       }
       .quote-mark {
         color: var(--accent) !important;
