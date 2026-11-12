@@ -467,7 +467,8 @@ inject:
         }
         /* 常驻右栏内容区止于右下角迷你播放器上方（预留 8px），内容超出在栏内滚动，避免卡片压住播放器 */
         aside#rightbar-region .widget-stack--rightbar {
-          max-height: calc(100vh - 16px - 140px - 8px) !important;
+          /* 16 顶部 + 110 播放器高 + 20 底边留白 + 8 间隙 */
+          max-height: calc(100vh - 16px - 130px - 8px) !important;
           overflow-y: auto !important;
         }
       }
@@ -594,10 +595,10 @@ inject:
           position: fixed !important;
           top: 16px !important;
           right: 16px !important;
-          /* 底部留出收起态迷你播放器的高度 + 8px 间隙，抽屉内容不会压住播放器 */
-          bottom: calc(16px + 98px) !important;
+          /* 底部留出收起态圆盘 76px + 底边 20px + 8px 间隙，抽屉内容不会压住播放器 */
+          bottom: calc(16px + 88px) !important;
           height: auto !important;
-          max-height: calc(var(--dvh) - 130px) !important;
+          max-height: calc(var(--dvh) - 120px) !important;
           width: min(380px, 85vw) !important;
           min-width: 0 !important;
           max-width: min(380px, 85vw) !important;
@@ -616,8 +617,8 @@ inject:
         aside#rightbar-region .widget-stack--rightbar {
           padding: 0 0 80px 0 !important; 
           height: 100% !important;
-          /* 与抽屉同高（上下各留 16px 与播放器区 98px），内容超出在抽屉内滚动 */
-          max-height: calc(var(--dvh) - 130px) !important;
+          /* 与抽屉同高（上下各留 16px 与播放器区 104px），内容超出在抽屉内滚动 */
+          max-height: calc(var(--dvh) - 120px) !important;
           overflow-y: auto !important;
         }
 
@@ -1179,7 +1180,8 @@ inject:
 
       #music-drawer {
         position: fixed !important;
-        bottom: 30px !important;
+        /* 与左栏面板底边留白一致（左栏 surface 距视口底 20px），展开/收起共用 */
+        bottom: 20px !important;
         right: 30px !important;
         max-width: calc(100vw - 60px) !important;
         width: 360px !important;
@@ -1199,11 +1201,11 @@ inject:
         pointer-events: auto !important;
       }
 
-      /* 收起态：只剩 76px 圆形封面贴在视口右缘（与左栏头像 48px 同量级，底部留 24px） */
+      /* 收起态：只剩 76px 圆形封面贴在视口右缘（与左栏头像 48px 同量级，底部同样留 20px） */
       #music-drawer.is-collapsed {
         width: 76px !important;
         right: 8px !important;
-        bottom: 24px !important;
+        bottom: 20px !important;
       }
       #music-drawer.is-collapsed .site-mini {
         padding: 0;
