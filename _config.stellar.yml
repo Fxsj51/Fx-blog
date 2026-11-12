@@ -1098,7 +1098,8 @@ inject:
       #custom-lunar-calendar {
         width: 100% !important;
         max-width: 300px !important;
-        min-width: 260px !important;
+        /* 不再设下限：窄抽屉里随卡片内容宽度收缩，避免横向溢出 */
+        min-width: 0 !important;
         margin: 0 auto !important;
         padding: 0 !important;
       }
