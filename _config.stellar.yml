@@ -1131,18 +1131,11 @@ inject:
         text-align: center !important;
       }
 
-      .history-title {
-        font-size: var(--fs-14) !important;
-        font-weight: var(--fw-semibold) !important;
-        margin-bottom: var(--gap-lg) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: var(--gap-sm) !important;
-      }
+      /* 标题文字已移除：用上下内边距补回标题占用的 28.8px，卡片总高与改动前一致 */
       #custom-quote {
         font-size: var(--fs-13) !important;
         line-height: var(--lh-copy) !important;
+        padding: 6px 0 22.8px !important;
       }
       .quote-item {
         margin-bottom: var(--gap-md) !important;
@@ -1808,10 +1801,7 @@ inject:
             <div class="card-divider"></div>
             <div id="custom-huangli" class="error-text">正在获取今日黄历...</div>
             <div class="card-divider"></div>
-            <div class="history-title">
-              <span>每日一言</span>
-            </div>
-            <div id="custom-quote">正在加载一言...</div>
+            <div id="custom-quote" role="note" aria-label="每日一言">正在加载一言...</div>
           </div>
         `);
         loadLunarLibrary()
