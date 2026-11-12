@@ -535,6 +535,16 @@ inject:
         }
       }
 
+      /* 右栏卡片内部滚动条隐藏（保留滚动能力）；只作用于该容器，不动其它滚动区 */
+      #my-custom-card {
+        scrollbar-width: none;
+      }
+      #my-custom-card::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+        display: none;
+      }
+
       aside#leftbar-region {
         grid-column: 1 !important;
         width: 340px !important;
