@@ -518,15 +518,20 @@ inject:
         html[data-leftbar-state="collapsed"] .site-shell:not([data-regions~='rightbar']) aside#leftbar-region {
           transform: translateX(min(138px, max(0px, (100vw - var(--sbw, 8px) - 1444px) / 2))) !important;
         }
-        /* 常驻右栏内容区止于右下角迷你播放器上方（预留 8px），内容超出在栏内滚动，避免卡片压住播放器 */
+        /* 右栏不做整体裁切：让卡片自身随视口缩短，超出内容在卡片内滚动，圆角始终完整 */
         aside#rightbar-region .widget-stack--rightbar {
-          /* 16 顶部 + 110 播放器高 + 20 底边留白 + 8 间隙 */
-          max-height: calc(100vh - 16px - 130px - 8px) !important;
-          overflow-y: auto !important;
+          max-height: none !important;
+          overflow: visible !important;
         }
-        /* 播放器收起成 76px 圆盘时只按圆盘预留，上限随状态变化（:has 不支持时退回展开态保守值） */
-        body:has(#music-drawer.is-collapsed) aside#rightbar-region .widget-stack--rightbar {
-          max-height: calc(100vh - 16px - 76px - 20px - 8px) !important;
+        /* 36 顶部 + 110 播放器高 + 20 底边留白 + 8 间隙 */
+        aside#rightbar-region #my-custom-card {
+          max-height: calc(100vh - 36px - 110px - 20px - 8px) !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain;
+        }
+        /* 播放器收起成 76px 圆盘时少预留 34px（:has 不支持时退回展开态保守值） */
+        body:has(#music-drawer.is-collapsed) aside#rightbar-region #my-custom-card {
+          max-height: calc(100vh - 36px - 76px - 20px - 8px) !important;
         }
       }
 
@@ -672,11 +677,16 @@ inject:
         }
 
         aside#rightbar-region .widget-stack--rightbar {
-          padding: 0 0 80px 0 !important; 
-          height: 100% !important;
-          /* 与抽屉同高（上下各留 16px 与播放器区 104px），内容超出在抽屉内滚动 */
-          max-height: calc(var(--dvh) - 120px) !important;
+          padding: 0 !important;
+          height: auto !important;
+          max-height: none !important;
+          overflow: visible !important;
+        }
+        /* 抽屉内同样由卡片自己滚动：底边止于圆盘上方 8px，圆角不被抽屉裁掉 */
+        aside#rightbar-region #my-custom-card {
+          max-height: calc(var(--dvh) - 140px) !important;
           overflow-y: auto !important;
+          overscroll-behavior: contain;
         }
 
         body.show-rightbar aside#rightbar-region {
@@ -1906,8 +1916,9 @@ inject:
             setTimeout(initCardOnce, 1200);
           }
         };
-        if (document.readyState === 'complete') run();
-        else window.addEventListener('load', run, { once: true });
+        // 不等 window.load：第三方统计等脚本挂起时 load 可能迟迟不来，卡片不应被拖住
+        if (document.readyState === 'complete' || document.readyState === 'interactive') run();
+        else document.addEventListener('DOMContentLoaded', run, { once: true });
       }
       scheduleCard();
     })();
