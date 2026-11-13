@@ -10,6 +10,7 @@ const EDGE = lib.browserPath();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 (async () => {
+  await lib.ensureSite();
   const proc = spawn(EDGE, ['--headless=new', '--remote-debugging-port=' + PORT,
     '--user-data-dir=' + path.join(os.tmpdir(), 'dur-' + Date.now()),
     '--no-first-run', '--no-default-browser-check', '--disable-gpu',

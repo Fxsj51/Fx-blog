@@ -55,6 +55,7 @@ const near = (x, y, tol) => Math.abs(x - y) <= tol;
 const syncOk = (s) => s.playing === (s.label === '暂停') && s.dLabel === s.label && s.pressed === (s.playing ? 'true' : 'false') && s.dPressed === s.pressed && s.isPlaying === s.playing;
 
 (async () => {
+  await lib.ensureSite();
   const proc = spawn(EDGE, ['--headless=new', '--remote-debugging-port=' + PORT,
     '--user-data-dir=' + path.join(os.tmpdir(), 'disc-' + Date.now()),
     '--no-first-run', '--no-default-browser-check', '--disable-gpu',

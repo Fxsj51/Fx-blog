@@ -9,7 +9,7 @@ npm run build   # 先构建，脚本直接读 public/
 npm run verify  # 一条命令跑全部
 ```
 
-入口会自动复用（或后台启动）`tools/preview.js`（:4173，支持 HTTP Range——音频进度条能拖动的前提），跑完自动关闭。
+入口与每个单跑脚本都会自动复用（或后台启动）`tools/preview.js`（:4173，支持 HTTP Range——音频进度条能拖动的前提）：已有服务就复用、跑完不关它；没有就自己起、结束（含 Ctrl+C / 异常）时关闭并释放端口。端口被别的程序占用会直接报错退出，不会静默连上去跑出一堆 `undefined`。
 
 - 站点地址：默认 `http://127.0.0.1:4173`，可用 `VERIFY_BASE=http://127.0.0.1:8080 npm run verify`
 - 浏览器：自动探测 Edge/Chrome 常见安装位置，找不到时用 `VERIFY_BROWSER=/path/to/chrome` 指定
@@ -64,13 +64,13 @@ npm run verify  # 一条命令跑全部
 
 ```bash
 npm run build          # 首次或改了 source/ 之后
-npm run preview        # 另开一个终端，保持运行（:4173）
 node tools/verify/verify-flow.js
 ```
 
-- 单跑**不会**自动起预览服务；只有 `npm run verify` 入口会自动复用或启动 `tools/preview.js`。
-- 预览没起时脚本会一直等到超时，输出里满是 `null` / `undefined` / `audio: 0`，耗时也会拉长到 35–60 秒——看到这些先检查服务，不要当成通过。
-- 想换地址就改环境变量：macOS/Linux `VERIFY_BASE=http://127.0.0.1:8080 node tools/verify/verify-flow.js`；PowerShell `$env:VERIFY_BASE='http://127.0.0.1:8080'; node tools/verify/verify-flow.js`。
+- 单跑会自动起预览服务（端口空闲时），跑完自动关闭；端口上已有 `tools/preview.js` 在跑则直接复用，不会起来第二个，也不会关掉你手工起的那个。
+- 端口被别的程序占用时报错并退出：`http://127.0.0.1:4173 已被其他程序占用（响应不像 tools/preview.js）…`——关掉占用进程，或用 `VERIFY_BASE` 换端口。
+- 想换地址：macOS/Linux `VERIFY_BASE=http://127.0.0.1:8080 node tools/verify/verify-flow.js`；PowerShell `$env:VERIFY_BASE='http://127.0.0.1:8080'; node tools/verify/verify-flow.js`。
+- 脚本不再接受命令行 URL 参数，地址统一走 `VERIFY_BASE`。
 
 ## 失败时先看哪
 

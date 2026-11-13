@@ -6,12 +6,13 @@ const os = require('os');
 const fs = require('fs');
 
 const lib = require('./lib');
-const URL_ = process.argv[2] || lib.baseUrl() + '/';
+const URL_ = lib.baseUrl() + '/';
 const PORT = 9451;
 const EDGE = lib.browserPath();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 (async () => {
+  await lib.ensureSite();
   const proc = spawn(EDGE, ['--headless=new', '--remote-debugging-port=' + PORT,
     '--user-data-dir=' + path.join(os.tmpdir(), 'flow-' + Date.now()),
     '--no-first-run', '--no-default-browser-check', '--disable-gpu',

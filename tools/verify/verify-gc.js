@@ -6,7 +6,7 @@ const os = require('os');
 const fs = require('fs');
 
 const lib = require('./lib');
-const URL_ = process.argv[2] || lib.baseUrl() + '/';
+const URL_ = lib.baseUrl() + '/';
 const PORT = 9445;
 const EDGE = lib.browserPath();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -86,6 +86,7 @@ async function run(mode) {
 }
 
 (async () => {
+  await lib.ensureSite();
   await run('allow');
   await run('block');
 })().catch((e) => { console.error('FATAL', e && e.message); process.exit(2); });

@@ -6,7 +6,7 @@ const os = require('os');
 const fs = require('fs');
 
 const lib = require('./lib');
-const BASE = process.argv[2] || lib.baseUrl() + '/';
+const BASE = lib.baseUrl() + '/';
 const PORT = 9436;
 const EDGE = lib.browserPath();
 const SHOTS = lib.outDir();
@@ -16,6 +16,7 @@ const results = [];
 const record = (name, ok, detail) => { results.push({ name, ok, detail }); console.log((ok ? 'PASS ' : 'FAIL ') + name + ' ' + JSON.stringify(detail)); };
 
 (async () => {
+  await lib.ensureSite();
   const proc = spawn(EDGE, ['--headless=new', '--remote-debugging-port=' + PORT,
     '--user-data-dir=' + path.join(os.tmpdir(), 'quote-' + Date.now()),
     '--no-first-run', '--no-default-browser-check', '--disable-gpu',

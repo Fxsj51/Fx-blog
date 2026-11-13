@@ -6,12 +6,13 @@ const os = require('os');
 const fs = require('fs');
 
 const lib = require('./lib');
-const BASE = process.argv[2] || lib.baseUrl() + '/music/';
+const BASE = lib.baseUrl() + '/music/';
 const PORT = 9454;
 const EDGE = lib.browserPath();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 (async () => {
+  await lib.ensureSite();
   const proc = spawn(EDGE, ['--headless=new', '--remote-debugging-port=' + PORT,
     '--user-data-dir=' + path.join(os.tmpdir(), 'wh-' + Date.now()),
     '--no-first-run', '--no-default-browser-check', '--disable-gpu',

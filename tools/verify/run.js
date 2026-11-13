@@ -2,19 +2,14 @@
 /*
  * 回归入口：npm run verify
  * - 需要先 npm run build（脚本直接读 public/）
- * - 自动复用或启动 tools/preview.js（4173，支持 HTTP Range，音频进度条才可拖动）
+ * - 预览服务由 lib.ensureSite() 统一处理：已有就复用，没有就起 tools/preview.js（实例共享，不会起两次）
  * - 两类脚本：
  *   有数值断言 —— 失败即整体非零退出；
  *   观测型     —— 只打印实测值，退出码为 0 时不算失败（用于看几何/文案是否漂移）
  */
-const { spawn, spawnSync } = require('child_process');
-const fs = require('fs');
-const http = require('http');
+const { spawnSync } = require('child_process');
 const path = require('path');
 const lib = require('./lib');
-
-const PORT = 4173;
-const PUBLIC_INDEX = path.join(lib.ROOT, 'public', 'index.html');
 
 // 有数值断言：退出码非零即失败
 const ASSERT = [
@@ -33,39 +28,6 @@ const OBSERVE = [
   ['verify-gc.js', 'GoatCounter 计数路径与 count.js 被拦截时静默']
 ];
 
-function probe(url) {
-  return new Promise((resolve) => {
-    const req = http.get(url, (res) => {
-      res.resume();
-      resolve(res.statusCode >= 200 && res.statusCode < 500);
-    });
-    req.on('error', () => resolve(false));
-    req.setTimeout(1500, () => { req.destroy(); resolve(false); });
-  });
-}
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function ensureServer() {
-  const url = lib.baseUrl() + '/';
-  if (await probe(url)) {
-    console.log('[verify] 复用已在运行的 ' + url);
-    return null;
-  }
-  const child = spawn(process.execPath, [path.join(lib.ROOT, 'tools', 'preview.js'), '--port', String(PORT)], {
-    stdio: 'ignore'
-  });
-  for (let i = 0; i < 60; i++) {
-    if (await probe(url)) {
-      console.log('[verify] 已启动 tools/preview.js -> ' + url);
-      return child;
-    }
-    await sleep(150);
-  }
-  try { child.kill(); } catch (e) {}
-  throw new Error('本地预览服务启动失败：' + url + '（端口 ' + PORT + ' 是否被占用？）');
-}
-
 function runOne(file, label) {
   const script = path.join(__dirname, file);
   console.log('\n[verify] ▶ ' + file + ' — ' + label);
@@ -77,18 +39,8 @@ function runOne(file, label) {
 }
 
 (async () => {
-  if (!fs.existsSync(PUBLIC_INDEX)) {
-    console.error('[verify] 未找到 public/index.html，请先运行 npm run build');
-    process.exit(1);
-  }
-
-  let server = null;
-  let interrupted = false;
-  const stop = () => { if (server) { try { server.kill(); } catch (e) {} } };
-  process.on('SIGINT', () => { interrupted = true; stop(); process.exit(130); });
-
   try {
-    server = await ensureServer();
+    await lib.ensureSite();
   } catch (e) {
     console.error('[verify] ' + e.message);
     process.exit(1);
@@ -99,12 +51,12 @@ function runOne(file, label) {
     if (!runOne(file, label)) failedAssert.push(file);
   }
 
-  let observeBroken = [];
+  const observeBroken = [];
   for (const [file, label] of OBSERVE) {
     if (!runOne(file, label)) observeBroken.push(file);
   }
 
-  stop();
+  lib.stopServer();
 
   console.log('\n================ [verify] 汇总 ================');
   console.log('有断言脚本：' + (ASSERT.length - failedAssert.length) + '/' + ASSERT.length + ' 通过');
@@ -114,7 +66,7 @@ function runOne(file, label) {
   console.log('截图与报告：' + path.join('tools', 'verify', 'out'));
   console.log('==============================================');
 
-  if (!interrupted && failedAssert.length) process.exit(1);
+  if (failedAssert.length) process.exit(1);
 })().catch((e) => {
   console.error('[verify] FATAL', (e && e.stack) || e);
   process.exit(2);

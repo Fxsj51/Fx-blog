@@ -51,6 +51,7 @@ const S = `(() => {
 })()`;
 
 (async () => {
+  await lib.ensureSite();
   const proc = spawn(EDGE, ['--headless=new', '--remote-debugging-port=' + PORT,
     '--user-data-dir=' + path.join(os.tmpdir(), 'c18-' + Date.now()),
     '--no-first-run', '--no-default-browser-check', '--disable-gpu',
