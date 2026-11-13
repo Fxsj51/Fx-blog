@@ -45,7 +45,6 @@ rightbar:
   <div class="music-body">
     <div class="music-body__main">
       {% playlist %}
-      <p class="music-hint">默认预选歌单第一首并读取时长，点击播放才开始出声；循环模式会记住上次选择。</p>
     </div>
   </div>
   <div class="music-lyrics-dock">
@@ -184,9 +183,6 @@ rightbar:
 .music-item__title { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .music-item__artist { font-size: 12px; opacity: .65; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .music-item__dur { font-size: 12px; opacity: .6; font-variant-numeric: tabular-nums; }
-/* 提示文字直接压在背景图上，比卡片内的正文更需要对比度：提亮并加一层极淡的暗色投影。
-   选择器加 .music-page 前缀，压过主题 `.md-text p` 的段落上边距，避免与 flex gap 叠成 32px */
-.music-page .music-hint { margin: 0; font-size: 12px; opacity: .9; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
 .music-body { display: block; min-width: 0; }
 .music-body__main { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 .music-lyrics-dock { min-width: 0; }
