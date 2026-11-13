@@ -25,6 +25,23 @@ function run(args, label) {
   if (res.status !== 0) fail(label, res.status);
 }
 
+// sitemap 生成器直接把 config.url 原样当作首页 loc，url 不带尾斜杠时首页会缺 `/`，
+// 与其余条目（均以 `/` 结尾）不一致。这里统一补上；只动 <loc> 里没有尾斜杠、
+// 也不像具体文件（含扩展名）的条目，页面 URL 不受影响。
+function normalizeSitemapHome() {
+  const file = path.join(ROOT, 'public', 'sitemap.xml');
+  if (!fs.existsSync(file)) return;
+  const xml = fs.readFileSync(file, 'utf8');
+  const next = xml.replace(/(<loc>)([^<]+?)(<\/loc>)/g, (all, open, loc, close) => {
+    if (/\/$/.test(loc) || /\.[a-z0-9]+$/i.test(loc)) return all;
+    return open + loc + '/' + close;
+  });
+  if (next !== xml) {
+    fs.writeFileSync(file, next);
+    console.log('[build] sitemap 首页地址已补尾斜杠');
+  }
+}
+
 function main() {
   if (!fs.existsSync(HEXO_CLI)) {
     fail('找不到 hexo CLI，请先运行 npm ci', 1);
@@ -43,6 +60,7 @@ function main() {
   run([HEXO_CLI, 'clean'], 'hexo clean');
   run([HEXO_CLI, 'generate', '--config', configs.join(',')], 'hexo generate');
   run([path.join(ROOT, 'tools', 'minify.js')], 'tools/minify.js');
+  normalizeSitemapHome();
   console.log('[build] 完成');
 }
 
