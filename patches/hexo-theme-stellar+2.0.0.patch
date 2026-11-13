@@ -13,3 +13,24 @@ index 28ff615..b1b27d2 100644
  const rightbarDrawerQuery = '(max-width: 1180px)';
  let shellDrawerTrigger = null;
  let searchDialogTrigger = null;
+diff --git a/node_modules/hexo-theme-stellar/source/js/runtime/index.js b/node_modules/hexo-theme-stellar/source/js/runtime/index.js
+index 42ddcd5..b8ccf53 100644
+--- a/node_modules/hexo-theme-stellar/source/js/runtime/index.js
++++ b/node_modules/hexo-theme-stellar/source/js/runtime/index.js
+@@ -81,7 +81,15 @@ async function start() {
+   });
+   window.addEventListener('pageshow', event => {
+     hidden = false;
+-    if (event.persisted) void Promise.all([mount(document, 'document'), ...regionRoots().map(root => mount(root, 'region'))]);
++    if (event.persisted) {
++      // SPA 换页会整体替换 #main / #rightbar-region / #site-cover 等区域节点，
++      // 旧 root 上的扩展实例（signal 绑定的 window 监听、retain 的 DOM）从未被
++      // unmount，每次换页都在泄漏；重挂前先卸载已脱离文档的旧 root。
++      [...mounted.keys()].forEach(root => {
++        if (root !== document && !root.isConnected) void unmount(root);
++      });
++      void Promise.all([mount(document, 'document'), ...regionRoots().map(root => mount(root, 'region'))]);
++    }
+   });
+   await Promise.all([mount(document, 'document'), ...regionRoots().map(root => mount(root, 'region'))]);
+ }
