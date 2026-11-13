@@ -68,13 +68,6 @@
     // 把全站唯一的音频节点挂进「当前曲目」卡片（移动节点不会中断播放）
     player.mount(document.querySelector('.music-page .music-now__info'));
 
-    function formatTime(sec) {
-      if (!isFinite(sec) || sec <= 0) return '—';
-      var m = Math.floor(sec / 60);
-      var s = Math.floor(sec % 60);
-      return m + ':' + (s < 10 ? '0' : '') + s;
-    }
-
     // ---------------- 播放控件（自绘进度条：按下即跳、拖动跟随、松手不回弹） ----------------
     var ICON_PLAY = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 5l12 7-12 7z"/></svg>';
     var ICON_PAUSE = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
@@ -628,7 +621,7 @@
         if (idx >= 0) loadLyrics(lrc, zhlrc);
         else showLyricsMessage('点击曲目开始播放，歌词会跟随高亮。', '—');
       }
-      if (st.duration > 0) setActiveDuration(formatTime(st.duration));
+      if (st.duration > 0) setActiveDuration(player.formatTime(st.duration, '—'));
       updateLyric(st.currentTime);
       syncToggle(st);
       syncLoop(st);
@@ -653,7 +646,7 @@
     var unsubscribe = player.subscribe(function (st, type) {
       if (type === 'time') { updateLyric(st.currentTime); syncProgress(st); return; }
       if (type === 'meta') {
-        if (st.duration > 0) setActiveDuration(formatTime(st.duration));
+        if (st.duration > 0) setActiveDuration(player.formatTime(st.duration, '—'));
         syncProgress(st);
         return;
       }

@@ -71,8 +71,9 @@
     return el;
   }
 
-  function formatTime(sec) {
-    if (!isFinite(sec) || sec <= 0) return '0:00';
+  // 全站统一的时间格式化入口；零值/未知文案由调用处决定（播放器用 0:00，歌词用 —）
+  function formatTime(sec, zeroText) {
+    if (!isFinite(sec) || sec <= 0) return zeroText || '0:00';
     var m = Math.floor(sec / 60);
     var s = Math.floor(sec % 60);
     return m + ':' + (s < 10 ? '0' : '') + s;
@@ -505,6 +506,7 @@
     unmount: unmount,
     subscribe: subscribe,
     state: snapshot,
+    formatTime: formatTime,
     get playlist() { return readPlaylist(); },
     get index() { return index; }
   };
