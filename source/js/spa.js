@@ -25,6 +25,10 @@
   var currentPath = location.pathname + location.search;
   var bar = null;
   var scrollTick = null;
+  // Safari 对 replaceState 有 100 次/30 秒的频率限制，超出会抛异常；
+  // 滚动记录按时间节流（300ms 一次足够还原滚动位置），避免连续滚动触发限频。
+  var SCROLL_REMEMBER_INTERVAL = 300;
+  var lastScrollRemember = 0;
 
   if ('scrollRestoration' in history) {
     try { history.scrollRestoration = 'manual'; } catch (e) {}
@@ -383,6 +387,9 @@
     if (scrollTick) return;
     scrollTick = window.requestAnimationFrame(function () {
       scrollTick = null;
+      var now = Date.now();
+      if (now - lastScrollRemember < SCROLL_REMEMBER_INTERVAL) return;
+      lastScrollRemember = now;
       remember();
     });
   }, { passive: true });

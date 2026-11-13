@@ -424,9 +424,11 @@
     }
   }
 
-  // 首页判定：站点根路径（归档页的 data-page-type 也是 index，不能只看属性）
+  // 首页判定：站点根路径（归档页的 data-page-type 也是 index，不能只看属性）。
+  // 必须与脚本自身派生的 ROOT 比较（含 GitHub Pages 子路径），不能用字面量 '/'，
+  // 否则项目页部署时首页判定永远为 false，迷你播放器不会默认展开。
   function isHomePage() {
-    return location.pathname === '/' && document.body.getAttribute('data-page-type') === 'index';
+    return location.pathname === ROOT && document.body.getAttribute('data-page-type') === 'index';
   }
 
   // 音乐页有自己的大播放器，抽屉不重复；其余页面只看视口断点：≤1180 收起为贴右缘的圆形封面
