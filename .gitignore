@@ -6,5 +6,6 @@ db.json
 *.log
 node_modules/
 public/
+tools/verify/out/
 .deploy*/
 _config.pages.yml

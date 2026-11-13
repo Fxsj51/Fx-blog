@@ -11,6 +11,7 @@
     "lyrics": "node tools/lyrics.js",
     "lyrics:zh": "node tools/lyrics-zh.js",
     "preview": "node tools/preview.js",
+    "verify": "node tools/verify/run.js",
     "server": "hexo server",
     "postinstall": "patch-package"
   },
