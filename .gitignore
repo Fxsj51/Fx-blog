@@ -7,5 +7,7 @@ db.json
 node_modules/
 public/
 tools/verify/out/
+# Stellar 主题构建期生成的图片元数据缓存（尺寸/平均色），每次构建自动重写
+source/_data/caches/images_metadata.json
 .deploy*/
 _config.pages.yml
