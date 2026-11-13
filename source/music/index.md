@@ -210,6 +210,8 @@ rightbar:
 }
 .music-lyrics__scroll::-webkit-scrollbar { display: none; }
 .music-lyrics__empty { margin: 0; min-height: 100%; display: grid; place-items: center; padding: 0 8px; text-align: center; font-size: 13px; line-height: 1.7; opacity: .6; }
+/* 纯音乐空状态：锁定滚动（滚轮/触摸/键盘都不动），也不把滚动链传给页面 */
+.music-lyrics__scroll.is-empty { overflow-y: hidden; overscroll-behavior: contain; }
 .lyric-line { margin: 0; padding: 7px 0 7px 12px; border-left: 2px solid transparent; border-radius: 0 8px 8px 0; font-size: 14px; line-height: 1.55; opacity: .42; transition: opacity .25s, background .25s, border-color .25s; }
 .lyric-line.is-past { opacity: .26; }
 .lyric-line.is-current { opacity: 1; font-weight: 600; border-left-color: #1DB954; background: rgba(29, 185, 84, 0.1); }

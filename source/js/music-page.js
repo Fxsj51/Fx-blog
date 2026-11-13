@@ -428,6 +428,9 @@
       lyricLines = [];
       lyricIndex = -1;
       lyricsScroll.innerHTML = '';
+      // 无歌词时禁用滚动：清掉上一首留下的滚动位置，空状态不随任何操作移动
+      lyricsScroll.classList.add('is-empty');
+      lyricsScroll.scrollTop = 0;
       var p = document.createElement('p');
       p.className = 'music-lyrics__empty';
       p.textContent = text;
@@ -504,6 +507,7 @@
         showLyricsMessage('纯音乐，请欣赏', '无歌词');
         return;
       }
+      lyricsScroll.classList.remove('is-empty');
       var zhMap = Object.create(null);
       (zhLines || []).forEach(function (line) {
         var key = line.time.toFixed(2);
