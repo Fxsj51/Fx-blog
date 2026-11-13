@@ -31,13 +31,24 @@ function fail(file, message) {
   console.error(`  FAILED ${path.relative(publicDir, file)}: ${message}`);
 }
 
-// GitHub Pages 项目页部署在 /<repo>/ 下；构建时由 _config.pages.yml 提供 root。
-// 该文件由 CI 临时生成，已在 .gitignore 中忽略；本地没有时按根路径处理。
+// GitHub Pages 项目页部署在 /<repo>/ 下。root 来源优先级：
+// 1. 构建时由 CI 临时生成的 _config.pages.yml（--pages 模式）；
+// 2. _config.yml 的 url 路径部分（Hexo 会据此自动派生 config.root，
+//    本地直连真实仓库地址构建时同样需要给 CSS 里的 /images/ 补前缀，
+//    与 scripts/site-root.js 对 HTML 的处理保持一致）。
+// 都没有时按根路径处理。
 function getSiteRoot() {
   const pagesConfig = path.resolve(__dirname, '..', '_config.pages.yml');
-  if (!fs.existsSync(pagesConfig)) return '/';
-  const match = fs.readFileSync(pagesConfig, 'utf8').match(/^root:\s*(['"]?)([^'"\s]+)\1/m);
-  return match ? normalizeRoot(match[2]) : '/';
+  if (fs.existsSync(pagesConfig)) {
+    const match = fs.readFileSync(pagesConfig, 'utf8').match(/^root:\s*(['"]?)([^'"\s]+)\1/m);
+    if (match) return normalizeRoot(match[2]);
+  }
+  const siteConfig = path.resolve(__dirname, '..', '_config.yml');
+  if (fs.existsSync(siteConfig)) {
+    const match = fs.readFileSync(siteConfig, 'utf8').match(/^url:\s*['"]?https?:\/\/[^/'"\s]+(\/[^'"\s]*)?['"]?\s*$/m);
+    if (match && match[1] && match[1] !== '/') return normalizeRoot(match[1]);
+  }
+  return '/';
 }
 
 // 主题配置里的本地图片路径是根绝对路径，这里统一补上子路径前缀。

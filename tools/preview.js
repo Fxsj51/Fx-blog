@@ -11,6 +11,18 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..', 'public');
 const DEFAULT_PORT = 4173;
 
+// 站点部署根（GitHub Pages 项目页为 /<repo>/）。产物里的绝对路径都带这个前缀，
+// 本地预览按 public/ 直出，所以请求进来先剥掉它。前缀从 _config.yml 的 url 路径
+// 部分推导，与 Hexo 自动派生 config.root 的口径一致；根路径部署时为 ''。
+const SITE_ROOT = (() => {
+  try {
+    const cfg = fs.readFileSync(path.join(__dirname, '..', '_config.yml'), 'utf8');
+    const m = cfg.match(/^url:\s*['"]?https?:\/\/[^/'"\s]+(\/[^'"\s]*)?['"]?\s*$/m);
+    if (m && m[1] && m[1] !== '/') return m[1].replace(/\/?$/, '/');
+  } catch (e) {}
+  return '';
+})();
+
 function argPort() {
   const argv = process.argv.slice(2);
   for (let i = 0; i < argv.length; i++) {
@@ -95,6 +107,11 @@ function resolveFile(urlPath) {
     rel = decodeURIComponent(urlPath.split('?')[0]);
   } catch (e) {
     return null; // 非法百分号编码
+  }
+  // 剥掉部署根前缀（/Fx-blog/... → /...）；裸站点根 /Fx-blog 与 / 都回首页
+  if (SITE_ROOT) {
+    if (rel === SITE_ROOT || rel === SITE_ROOT.slice(0, -1)) rel = '/';
+    else if (rel.startsWith(SITE_ROOT)) rel = rel.slice(SITE_ROOT.length - 1);
   }
   const full = path.join(ROOT, path.normalize(rel));
   if (!full.startsWith(ROOT)) return null; // 阻止目录穿越

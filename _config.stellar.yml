@@ -114,6 +114,19 @@ features:
 inject:
   head_end: |
     <link rel="icon" href="__SITE_ROOT__favicon.ico">
+    <!-- 背景恒为深色照片，站点固定深色形态：不跟随系统偏好（微信等 App 内置浏览器
+         常不报 prefers-color-scheme，按浅色渲染会出现黑字压深图）。 -->
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#1c1613">
+    <!-- data-theme=dark 让主题的整套深色变量与组件覆盖无条件生效（主题原生机制）。
+         必须在首帧前设置；SPA 换页不重建 <html>，属性天然保持，换页完成后兜底重申一次。
+         托管标记必须带，否则 spa.js 会把它判为不兼容脚本而回退整页刷新。 -->
+    <script data-stellar-script="site">
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.addEventListener('stellar:navigation-complete', function() {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      });
+    </script>
     <link rel="preload" as="image" href="__SITE_ROOT__images/03-bg-1600.webp" fetchpriority="high" media="(min-width: 901px)">
     <link rel="preload" as="image" href="__SITE_ROOT__images/03-bg-900.webp" fetchpriority="high" media="(max-width: 900px)">
     <!-- GoatCounter：关闭自带 onload 计数，首屏与 SPA 换页统一走下面这个入口，路径按站内相对路径归一 -->
