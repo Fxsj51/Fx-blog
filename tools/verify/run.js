@@ -25,7 +25,8 @@ const OBSERVE = [
   ['check-dur.js', '无 LRC / 有 LRC 两种状态下的时长文案'],
   ['verify-lyrics-wheel.js', '歌词区无 LRC 锁滚、有 LRC 可滚与自动跟随、SPA 往返'],
   ['verify-flow.js', '右栏整页滚动、左栏吸顶、1440/1180/1181/375 几何'],
-  ['verify-gc.js', 'GoatCounter 计数路径与 count.js 被拦截时静默']
+  ['verify-gc.js', 'GoatCounter 计数路径与 count.js 被拦截时静默'],
+  ['verify-spa-hygiene.js', 'SPA 换页监听无泄漏、无 JS 异常、favicon 与相对路径无 404']
 ];
 
 function runOne(file, label) {
