@@ -518,20 +518,14 @@ inject:
         html[data-leftbar-state="collapsed"] .site-shell:not([data-regions~='rightbar']) aside#leftbar-region {
           transform: translateX(min(138px, max(0px, (100vw - var(--sbw, 8px) - 1444px) / 2))) !important;
         }
-        /* 右栏不做整体裁切：让卡片自身随视口缩短，超出内容在卡片内滚动，圆角始终完整 */
+        /* >1180 右栏内容按自然高度摊开，跟随整页滚动（定位在下方全局规则里切换） */
         aside#rightbar-region .widget-stack--rightbar {
           max-height: none !important;
           overflow: visible !important;
         }
-        /* 36 顶部 + 110 播放器高 + 20 底边留白 + 8 间隙 */
         aside#rightbar-region #my-custom-card {
-          max-height: calc(100vh - 36px - 110px - 20px - 8px) !important;
-          overflow-y: auto !important;
-          overscroll-behavior: contain;
-        }
-        /* 播放器收起成 76px 圆盘时少预留 34px（:has 不支持时退回展开态保守值） */
-        body:has(#music-drawer.is-collapsed) aside#rightbar-region #my-custom-card {
-          max-height: calc(100vh - 36px - 76px - 20px - 8px) !important;
+          max-height: none !important;
+          overflow: visible !important;
         }
       }
 
@@ -602,9 +596,11 @@ inject:
         width: 380px !important;
         min-width: 380px !important;
         max-width: 380px !important;
-        height: var(--dvh) !important;
-        position: sticky !important;
-        top: 0 !important;
+        /* 宽屏不吸顶：内容按自然高度排布并随整页滚动；138 = 播放器 110 + 底距 20 + 间隙 8 */
+        height: auto !important;
+        position: static !important;
+        top: auto !important;
+        padding-bottom: 138px !important;
         display: block !important;
         background: transparent !important;
         transition: transform var(--dur-slow) var(--ease), opacity var(--dur-slow) var(--ease) !important;
@@ -671,6 +667,7 @@ inject:
           bottom: calc(16px + 88px) !important;
           height: auto !important;
           max-height: calc(var(--dvh) - 120px) !important;
+          padding-bottom: 0 !important;
           width: min(380px, 85vw) !important;
           min-width: 0 !important;
           max-width: min(380px, 85vw) !important;
