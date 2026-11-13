@@ -113,6 +113,7 @@ features:
 
 inject:
   head_end: |
+    <link rel="icon" href="__SITE_ROOT__favicon.ico">
     <link rel="preload" as="image" href="__SITE_ROOT__images/03-bg-1600.webp" fetchpriority="high" media="(min-width: 901px)">
     <link rel="preload" as="image" href="__SITE_ROOT__images/03-bg-900.webp" fetchpriority="high" media="(max-width: 900px)">
     <!-- GoatCounter：关闭自带 onload 计数，首屏与 SPA 换页统一走下面这个入口，路径按站内相对路径归一 -->
