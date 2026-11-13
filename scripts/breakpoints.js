@@ -4,8 +4,9 @@
 // 所以这里在构建期做校验，改了一处而漏改另一处时直接构建失败。
 //
 // 同源三处：
-//   1. _config.stellar.yml 注入 CSS 的媒体查询字面量（1180/1181、900/901）
-//   2. _config.stellar.yml body_end 注入脚本里的 RIGHTBAR_DRAWER_MAX
+//   1. source/css/site-custom.css 媒体查询字面量（1180/1181、900/901）
+//   2. _config.stellar.yml 背景图 preload 的 media 属性（901/900）
+//      与 body_end 注入脚本里的 RIGHTBAR_DRAWER_MAX
 //   3. patches/hexo-theme-stellar+2.0.0.patch 里主题的 rightbarDrawerQuery / leftbar*Query
 // 另外 source/music/index.md 自带 <style> 也用了 1180/1181，一并校验。
 const fs = require('fs');
@@ -42,19 +43,28 @@ function check() {
     errors.push(`RIGHTBAR_DRAWER_MAX 为 ${jsConstant[1]}，应为 ${RIGHTBAR_DRAWER_MAX}`);
   }
 
+  // 1b. 背景图 preload 的 media 属性必须与断点一致（桌面 901+ / 移动 ≤900）
+  const preloadDesktop = (config.match(/media="\(min-width: 901px\)"/g) || []).length;
+  const preloadMobile = (config.match(/media="\(max-width: 900px\)"/g) || []).length;
+  if (preloadDesktop !== 1 || preloadMobile !== 1) {
+    errors.push(`背景图 preload media 应各出现 1 处（min-width: 901px / max-width: 900px），` +
+      `实际 ${preloadDesktop} / ${preloadMobile}`);
+  }
+
   // 2. 媒体查询字面量：按「出现次数」比对，避免只改其中一处时漏检
   //    （注释里的同源说明不计入；新增/删除断点媒体查询后请同步这里的期望计数）
-  const css = stripComments(config);
+  //    自定义样式已拆分到 source/css/site-custom.css，由 minify 压缩、全站共享缓存
+  const css = stripComments(read('source/css/site-custom.css'));
   const expected = [
     ['max', RIGHTBAR_DRAWER_MAX, 2],      // 抽屉样式、透明背景（音乐抽屉改为收起态，不再用它）
     ['min', RIGHTBAR_DRAWER_MAX + 1, 1],  // 无右栏页面固定侧栏
-    ['max', LEFTBAR_DRAWER_MAX, 3],       // 背景图预加载 + 两处左栏抽屉
-    ['min', LEFTBAR_DRAWER_MAX + 1, 2]    // 背景图预加载 + 折叠态区间
+    ['max', LEFTBAR_DRAWER_MAX, 2],       // 两处左栏抽屉
+    ['min', LEFTBAR_DRAWER_MAX + 1, 1]    // 折叠态区间
   ];
   expected.forEach(([kind, width, count]) => {
     const actual = countLiteral(css, kind, width);
     if (actual !== count) {
-      errors.push(`注入 CSS 中 ${kind}-width: ${width}px 出现 ${actual} 处，期望 ${count} 处` +
+      errors.push(`source/css/site-custom.css 中 ${kind}-width: ${width}px 出现 ${actual} 处，期望 ${count} 处` +
         `（改断点或增删媒体查询时，请同步 scripts/breakpoints.js 的期望计数）`);
     }
   });
@@ -65,7 +75,7 @@ function check() {
   const nearMiss = [RIGHTBAR_DRAWER_MAX - 1, RIGHTBAR_DRAWER_MAX + 2, LEFTBAR_DRAWER_MAX - 1, LEFTBAR_DRAWER_MAX + 2];
   widths.forEach(width => {
     if (nearMiss.includes(width)) {
-      errors.push(`注入 CSS 出现可疑断点 ${width}px（应使用 ${RIGHTBAR_DRAWER_MAX}/${RIGHTBAR_DRAWER_MAX + 1} 或 ${LEFTBAR_DRAWER_MAX}/${LEFTBAR_DRAWER_MAX + 1}）`);
+      errors.push(`source/css/site-custom.css 出现可疑断点 ${width}px（应使用 ${RIGHTBAR_DRAWER_MAX}/${RIGHTBAR_DRAWER_MAX + 1} 或 ${LEFTBAR_DRAWER_MAX}/${LEFTBAR_DRAWER_MAX + 1}）`);
     }
   });
 
