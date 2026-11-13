@@ -81,7 +81,9 @@ rightbar:
 .music-now__disc {
   position: relative; flex: 0 0 auto; width: 120px; height: 120px; border-radius: 50%;
   overflow: hidden;
-  background: url(../images/CP-disc-cropped.webp) center / 100% 100% no-repeat;
+  /* 资源路径用 __SITE_ROOT__ 构建令牌：内联 <style> 里的相对 URL 会按 baseURI 懒解析，
+     SPA pushState 换页后基路径变了会 404；根绝对 /images/ 在子路径部署也会 404 */
+  background: url(__SITE_ROOT__images/CP-disc-cropped.webp) center / 100% 100% no-repeat;
   animation: music-rotate 20s linear infinite; animation-play-state: paused;
   /* 唱片本体就是播放开关：暂停只切 animation-play-state，角度原地保留，继续时从这里接着转 */
   cursor: pointer;
