@@ -80,7 +80,9 @@ meta_generator: true
 date_format: YYYY-MM-DD
 time_format: HH:mm:ss
 ## updated_option supports 'mtime', 'date', 'empty'
-updated_option: 'mtime'
+## 用 'date'：git checkout 会刷新文件 mtime，用 'mtime' 会让文章的「更新时间」
+## 随每次构建漂移，出现假的更新日期
+updated_option: 'date'
 
 # Pagination
 ## Set per_page to 0 to disable pagination
@@ -98,8 +100,13 @@ ignore:
 ## Themes: https://hexo.io/themes/
 theme: stellar
 
-# 部署由 GitHub Actions Pages 工作流负责（.github/workflows/pages.yml）
+# SEO：站点地图与订阅源（url 在 CI 由 _config.pages.yml 覆盖为真实地址）
+sitemap:
+  path: sitemap.xml
 
-# 播放器
-aplayer:
-  meting: true
+feed:
+  type: atom
+  path: atom.xml
+  limit: 20
+
+# 部署由 GitHub Actions Pages 工作流负责（.github/workflows/pages.yml）

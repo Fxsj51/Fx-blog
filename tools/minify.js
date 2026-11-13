@@ -89,7 +89,9 @@ async function run() {
         removeAttributeQuotes: false,
         useShortDoctype: true,
         minifyCSS: true,
-        minifyJS: false,
+        // 页面注入了多段内联脚本（统计、断点、日历等），一并压缩；
+        // type="application/json" 的数据块不受影响
+        minifyJS: true,
         keepClosingSlash: true,
         ignoreCustomFragments: [/<%[\s\S]*?%>/, /<\?[\s\S]*?\?>/]
       });
