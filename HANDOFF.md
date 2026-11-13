@@ -228,7 +228,7 @@ off      = max(0, (V - sbw - 1720) / 2)     # 1720 = 340 + 1000 + 380
 1. **`pageshow` 重挂的内存残留**：`spa.js` 每次换页都派发 `pageshow({persisted:true})` 让主题扩展重挂到新 `#main`；主题侧以 root 元素身份做幂等判断，但旧节点上的监听/IntersectionObserver 是否完全释放**未验证**。SPA 内存增长目前只有推算，没有实测（见 §11）。
 2. **音频 `preload="none"` 不可回退**：初始不设 `src` 是刻意的（不点播不占流量），代价是无法在不触发请求的情况下拿到时长；列表里的 `duration` 来自 `playlist.yml`，播放后才被真实元数据覆盖。
 3. **`favicon.ico` 缺失**：`source/` 下没有任何 favicon 文件，`/favicon.ico` 会 404（主题也没注入 `<link rel="icon">`）。属已知噪音，不影响功能。
-4. **残留变量 `--rightbar-w`**：`_config.stellar.yml` 的 `:root` 里仍声明 `--rightbar-w: 380px`，但实际布局用的是 `--rightbar-col-w`；全库无引用（主题用的是 `--rightbar-width-extra`）。可安全删除，本轮按"不动样式"原则未改。
+4. ~~**残留变量 `--rightbar-w`**~~ ✅ 已删除（2026-11-13）：同批还删除了全库无引用的 `--white-85`；实际布局用 `--rightbar-col-w`。
 5. **唱片动画与"减少动态效果"**：`prefers-reduced-motion: reduce` 下只停住**未播放**的唱片（`.music-now__disc:not(.is-playing)`）；播放中的旋转被视为用户主动触发的反馈而保留。若产品口径要求完全关闭，需要改 `source/music/index.md` 内的 `@media (prefers-reduced-motion: reduce)`。
 6. **断点常量分散**：`1180` 同时出现在 CSS（多处）、JS（`RIGHTBAR_DRAWER_MAX`）、主题补丁（`rightbarDrawerQuery`，主题原值）；`900` 出现在 CSS 与补丁。改一处必漏，见 §13 待办。
 
@@ -379,7 +379,7 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 3. ~~**间距阶梯收口**~~ ✅ 已完成：注入 `<style>` 里 43 条 padding/margin 声明按**等值替换**改用 `--gap-*`（涉及 18 个值）。原有 6/8/10/12/16/24 复用 `--gap-xs/sm/md/lg/xl/2xl`；无对应档位的 2/4/14/18/20/28/30/32/40/80/120/160 按像素值新建 `--gap-2/4/14/18/20/28/30/32/40/80/120/160`（值等于原裸值，未调任何数）。刻意排除、保持原样：`margin: 0 auto`、`margin-top: auto`、`margin-top: -3px`（负值），以及音乐页 `source/music/index.md` 自带 `<style>`（不在「注入样式」范围）。0 值不建 `--gap-0`，仍写 `0`。
 4. **深浅色切换**：当前 `appearance.color_scheme: auto` 跟随系统，没有手动切换入口；如需手动切换要处理 `localStorage`、`color-scheme` 与背景图/卡片半透明底的对比度。
 5. **giscus 评论**：尚未接入；接入需要仓库 ID 与 category ID（在 giscus.app 生成），并注意 SPA 换页后评论 iframe 的重建（`stellar:navigation-complete` 里处理）。
-6. 删掉残留 `--rightbar-w`（§8-4）；补 `favicon.ico`（§8-3）。（`_multiconfig.yml` 已删、CI Node 已升 22，均已在第二批完成。）
+6. 补 `favicon.ico`（§8-3）。（`--rightbar-w` 已于 2026-11-13 删除；`_multiconfig.yml` 已删、CI Node 已升 22，均已在第二批完成。）
 
 ---
 

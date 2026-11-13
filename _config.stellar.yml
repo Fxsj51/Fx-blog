@@ -211,7 +211,6 @@ inject:
       :root {
         --leftbar-w: 340px;
         --leftbar-w-collapsed: 64px;
-        --rightbar-w: 380px;
         --rightbar-col-w: 380px;
         --vh: 1vh;
         --dvh: calc(var(--vh, 1vh) * 100);
@@ -350,7 +349,6 @@ inject:
         --white-70: rgba(255, 255, 255, 0.7);
         --white-78: rgba(255, 255, 255, 0.78);
         --white-80: rgba(255, 255, 255, 0.8);
-        --white-85: rgba(255, 255, 255, 0.85);
         --white-90: rgba(255, 255, 255, 0.9);
         --white-95: rgba(255, 255, 255, 0.95);
         /* ===== 黑色叠加档位（阴影 / 遮罩） ===== */
