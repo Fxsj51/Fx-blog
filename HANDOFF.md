@@ -1,7 +1,7 @@
 # HANDOFF — Fx-blog 交接文档
 
 > 本文件面向"下一轮接手的人/AI"。目标是：读完之后能在**不改坏站点**的前提下继续开发。
-> 最后更新：2026-11-11（第十八批：歌词保持文档流；第十九批：迷你播放器收起为右侧圆形封面）
+> 最后更新：2026-11-13（第二十批：站名统一 Feixiao；右栏一言卡片与布局收口；宽屏右栏随页滚动、左栏吸顶修复；音乐页空歌词锁滚）
 > 状态标记：**【实测】**= 本轮实际跑过/量过；**【推算】**= 按 CSS 公式推导，未在浏览器里量；**【未覆盖】**= 从没跑过。
 
 ---
@@ -113,6 +113,7 @@ npm run server       # hexo server，本地预览（注意：本地没有 _confi
 - 无右栏页面（music/about/categories/tags/archives）：`#rightbar-region` 不存在 → 隐藏开关按钮、不渲染第三列（`--rightbar-col-w: 0` 由 `data-regions` 控制）。
 - 点击 `document` 任意处关闭抽屉；右栏内部点击 `stopPropagation`。
 - 窗口变宽（`resize` 去抖 100ms）→ 若已常驻则强制收回抽屉，并用 `sb-no-transition` 临时关掉过渡避免闪动。
+- **>1180 宽屏右栏不吸顶也不限高**：`#rightbar-region` 为 `position: static; height: auto`，卡片与 `.widget-stack--rightbar` 无 `max-height`/`overflow` 裁切，内容随整页滚动；容器底部预留 138px（播放器 110 + 底距 20 + 间隙 8），滚到页底时卡片底边停在播放器上方 8px。≤1180 抽屉仍为 fixed + 卡片内滚（隐藏滚动条）。左栏 `position: sticky` 依赖 `overflow-x: clip`（`hidden` 会让 html/body/`.site-workspace` 变成滚动容器，导致左栏被带走）。
 
 ### 4.5 固定侧栏（无右栏页面的三列对齐）—— 同文件 `@media (min-width: 1181px)`
 
@@ -407,6 +408,17 @@ npm run lyrics:zh -- --pick "曲名=歌曲id"  # 多条候选并列时手工指�
 ---
 
 ## 15. 变更记录
+
+### 第二十批（2026-11-13）
+
+- 品牌：全站站名/作者统一为 `Feixiao`；`url`、`/Fx-blog/` 子路径、目录与仓库名未动。
+- 右栏「一言」卡片：只保留一句 + `—— 出处`，去掉标题与历史事件；正文 2 行 clamp、左右内缩 9px、卡片内滚隐藏滚动条；高度随视口缩短时圆角完整。
+- 右栏日历：去掉 `min-width: 260px`，随卡片宽度收缩（375 抽屉内不再横向裁切）。
+- 播放器：`#music-drawer` 展开态与收起圆盘统一 `bottom: 20px`，与左栏面板底距一致。
+- 布局：>1180 右栏改为随整页滚动（取消 sticky/限高，底部预留 138px）；左栏用 `overflow-x: clip` 修复 sticky 被祖先滚动容器带走的问题。
+- 音乐页：无 LRC 时歌词区 `is-empty` 锁滚并把 `scrollTop` 归零；删除歌单下方的操作提示文字。
+- 统计：接入 GoatCounter（§4.6），SPA 换页按归一化路径手动计数。
+- 清理：删除无引用的 `--rightbar-w`、`--white-85`。
 
 ### 第二批（2026-11-10）
 
