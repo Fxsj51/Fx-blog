@@ -36,6 +36,42 @@ npm run verify  # 一条命令跑全部
 | `verify-flow.js` | 右栏整页滚动/卡片完整性、左栏吸顶、1440/1180/1181/375 几何与溢出 |
 | `verify-gc.js` | GoatCounter 计数路径（首页/文章/音乐往返）与 count.js 被拦截时静默 |
 
+## 改哪块跑哪份
+
+耗时为本机实测单跑值（不含 `npm run build`），仅作参考。
+
+| 改到的东西 | 建议跑的脚本 | 耗时 |
+| --- | --- | --- |
+| 断点 / 布局与横向溢出（1180/1181、900/901、列宽、溢出） | `verify-flow.js` + `verify-disc-toggle.js`（后者含音乐页断点） | 约 66 秒（15 + 50） |
+| 迷你播放器（收起展开、底距、封面旋转、自动收回） | `verify-collapse18.js` | 约 2 分 02 秒 |
+| 音乐页控件（循环三态、音量、唱片暂停、进度条拖动） | `verify-loop-vol.js` + `verify-disc-toggle.js` | 约 2 分 30 秒（101 + 50） |
+| 歌词区（锁滚、双语、时长文案） | `verify-lyrics-wheel.js` + `check-dur.js` | 约 22 秒（14 + 7.5） |
+| 右栏卡片与滚动 | `verify-flow.js` | 约 15 秒 |
+| 左栏吸顶 | `verify-flow.js` | 约 15 秒 |
+| SPA 往返与脚本重放 | `verify-quote.js` + `verify-lyrics-wheel.js` | 约 1 分 07 秒（53 + 14） |
+| GoatCounter 计数 | `verify-gc.js` | 约 23 秒 |
+| 构建产物与断点校验 | `npm run build`（内含 `scripts/breakpoints.js` 断点校验） | 约 55 秒 |
+
+全套 9 个脚本实测合计约 6 分 33 秒（392 秒），加上起停预览服务与浏览器，一次 `npm run verify` 约 7 分钟。
+
+### 什么时候必须跑全套
+
+- 准备推送或交付前；
+- 一次改动跨多个区域（例如同时动了播放器与布局）；
+- 改了 `inject` 里的全局样式、公共 JS（`site-player.js` / `spa.js`）或主题 patch——这类改动会波及所有页面，单跑一份说明不了问题。
+
+### 单跑某个脚本
+
+```bash
+npm run build          # 首次或改了 source/ 之后
+npm run preview        # 另开一个终端，保持运行（:4173）
+node tools/verify/verify-flow.js
+```
+
+- 单跑**不会**自动起预览服务；只有 `npm run verify` 入口会自动复用或启动 `tools/preview.js`。
+- 预览没起时脚本会一直等到超时，输出里满是 `null` / `undefined` / `audio: 0`，耗时也会拉长到 35–60 秒——看到这些先检查服务，不要当成通过。
+- 想换地址就改环境变量：macOS/Linux `VERIFY_BASE=http://127.0.0.1:8080 node tools/verify/verify-flow.js`；PowerShell `$env:VERIFY_BASE='http://127.0.0.1:8080'; node tools/verify/verify-flow.js`。
+
 ## 失败时先看哪
 
 1. 有断言脚本先看 `FAIL` 行里的实测值——多数是设计调整后断言过期（贴边距离、断点宽度一类）。
