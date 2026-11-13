@@ -215,6 +215,9 @@ inject:
     <!-- 全站无刷新换页：替换页面级区域并广播 stellar:navigation-complete -->
     <script src="__SITE_ROOT__js/spa.js" data-stellar-script="site" defer></script>
 
+    <!-- 文章页评论（giscus）：换页后按新 pathname 重建，非文章页不注入 -->
+    <script src="__SITE_ROOT__js/giscus.js" data-stellar-script="site" defer></script>
+
     <!-- 移动端顶栏：左栏隐藏时显示头像+站名 -->
     <header id="mobile-brand-bar">
       <button type="button" id="mbb-menu-btn" class="mbb-menu-btn" aria-label="打开侧栏菜单" aria-controls="leftbar-region" aria-expanded="false">&#9776;</button>

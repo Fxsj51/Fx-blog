@@ -1306,3 +1306,8 @@
   .site-mini__list:hover {
     color: var(--accent);
   }
+
+  /* 文章页评论（giscus）：与正文留出间距 */
+  .giscus-wrap {
+    margin-top: 2rem;
+  }
