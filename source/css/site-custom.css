@@ -34,16 +34,15 @@
    * 的内联脚本在首帧前设置，主题的整套深色变量与组件覆盖
    * （:root[data-theme=dark]）由此无条件生效，微信等不报深色偏好的
    * App 内置浏览器也按深色渲染。
-   * 本段只补主题没做的三件事：UA 组件走深色（color-scheme）、
-   * html 深色底（overscroll / 图片未就绪时不露白）、body 基色
+   * 本段只补主题没做的两件事：UA 组件走深色（color-scheme）、body 基色
    * （主题只换变量不设基色，无显式颜色的文字——如文章底部分享栏——
    * 会落到浏览器默认的黑色，压在深色背景上对比度只有 1.27:1）。
+   * 注意：不要给 html 设 background——那会切断 body 背景向画布提升的传播，
+   * body 的不透明底会盖住 z-index:-1 的 .site-background，整站壁纸消失。
+   * 图片未就绪时的兜底色由 .site-background 自身的 background-color 承担。
    */
   :root {
     color-scheme: dark;
-  }
-  html {
-    background-color: var(--bg-fallback);
   }
   body {
     color: var(--text-p1);
