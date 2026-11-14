@@ -1,5 +1,5 @@
 diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/hexo-theme-stellar/source/js/main.js
-index 28ff615..ab0e92c 100644
+index 28ff615..a921b49 100644
 --- a/node_modules/hexo-theme-stellar/source/js/main.js
 +++ b/node_modules/hexo-theme-stellar/source/js/main.js
 @@ -97,6 +97,7 @@ const hud = {
@@ -171,7 +171,25 @@ index 28ff615..ab0e92c 100644
  document.addEventListener('pointerdown', function () {
    shellInputModality = 'pointer';
  });
-@@ -401,8 +458,9 @@ if (typeof window.matchMedia === 'function') {
+@@ -375,6 +432,17 @@ document.addEventListener('click', function (event) {
+   event.preventDefault();
+   shellActions[action](trigger);
+ });
++// ≤768 抽屉/窄条展开时：点击左栏以外的任何区域都收起（只改可见性，form 不动）。
++// 捕获阶段处理，兼容正文里 stopPropagation 的组件；栏内点击、遮罩与开关按钮交给原有逻辑。
++document.addEventListener('click', function (event) {
++  if (!regionUsesDrawer('leftbar') || !leftbarIsVisible()) return;
++  const target = event.target;
++  if (!target?.closest) return;
++  if (target.closest('#leftbar-region')) return;
++  if (target.closest('.site-scrim')) return;
++  if (target.closest('[data-shell-action="toggle-leftbar-drawer"], #mbb-menu-btn')) return;
++  applyLeftbarVisible(false, true);
++}, true);
+ document.addEventListener('keydown', function (event) {
+   shellInputModality = 'keyboard';
+   if (event.key === 'Escape') {
+@@ -401,8 +469,9 @@ if (typeof window.matchMedia === 'function') {
      return window.matchMedia(query);
    }).forEach(function (media) {
      const handleChange = function () {
