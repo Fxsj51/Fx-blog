@@ -43,7 +43,8 @@ const colorProbe = `(() => {
     shareColor: pick('.article-share .social-wrap a.share-item'),
     shareLabelColor: pick('.article-share .body'),
     textPrimaryVar: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
-    htmlBg: getComputedStyle(document.documentElement).backgroundColor
+    htmlBg: getComputedStyle(document.documentElement).backgroundColor,
+    themeColorMetas: Array.from(document.querySelectorAll('meta[name="theme-color"]')).map(function (m) { return m.getAttribute('content'); })
   };
 })()`;
 
@@ -89,6 +90,7 @@ const colorProbe = `(() => {
   record('首页：body 基色为浅色（亮度>0.5）', home.bodyLum != null && home.bodyLum > 0.5, { bodyColor: home.bodyColor, lum: home.bodyLum });
   record('首页：--text-primary 已并入主题 token', home.textPrimaryVar.indexOf('#ffffff') !== 0, home.textPrimaryVar);
   record('首页：html 深色底', /hsla?\(|rgba?\(/.test(home.htmlBg) && !/0%,\s*9[78]/.test(home.htmlBg), home.htmlBg);
+  record('首页：theme-color 收敛为唯一深色值', home.themeColorMetas.length === 1 && home.themeColorMetas[0] === '#1c1613', home.themeColorMetas);
   let png = await send('Page.captureScreenshot', { format: 'png' });
   const shotHome = path.join(SHOTS, 'dark-home-lightpref.png');
   fs.writeFileSync(shotHome, Buffer.from(png.data, 'base64'));

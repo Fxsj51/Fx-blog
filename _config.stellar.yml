@@ -120,9 +120,16 @@ inject:
     <meta name="theme-color" content="#1c1613">
     <!-- data-theme=dark 让主题的整套深色变量与组件覆盖无条件生效（主题原生机制）。
          必须在首帧前设置；SPA 换页不重建 <html>，属性天然保持，换页完成后兜底重申一次。
-         托管标记必须带，否则 spa.js 会把它判为不兼容脚本而回退整页刷新。 -->
+         托管标记必须带，否则 spa.js 会把它判为不兼容脚本而回退整页刷新。
+         同时清掉主题自带的 theme-color meta（无条件的 #f9fafb 浅色 + 带 dark media 的 #000），
+         站点为永久深色，统一收敛为唯一一条无条件的深色值，地址栏不再随系统偏好漂移。 -->
     <script data-stellar-script="site">
       document.documentElement.setAttribute('data-theme', 'dark');
+      document.querySelectorAll('meta[name="theme-color"]').forEach(function (el) { el.remove(); });
+      var __tc = document.createElement('meta');
+      __tc.setAttribute('name', 'theme-color');
+      __tc.setAttribute('content', '#1c1613');
+      document.head.appendChild(__tc);
       document.addEventListener('stellar:navigation-complete', function() {
         document.documentElement.setAttribute('data-theme', 'dark');
       });
