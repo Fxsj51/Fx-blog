@@ -188,7 +188,7 @@ inject:
         }
       })();
     </script>
-    <script data-goatcounter="https://feixiao.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+    <script data-goatcounter="https://feixiao.goatcounter.com/count" async src="__SITE_ROOT__js/count.js"></script>
     <!-- 播放器只在有右栏的页面（首页/文章页）显示；音乐页用卡片，移动端 ≤1180 由 CSS 隐藏 -->
     <script src="__SITE_ROOT__js/site-player.js" data-stellar-script="site" defer></script>
 
