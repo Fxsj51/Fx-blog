@@ -4,16 +4,18 @@
 // 所以这里在构建期做校验，改了一处而漏改另一处时直接构建失败。
 //
 // 同源三处：
-//   1. source/css/site-custom.css 媒体查询字面量（1180/1181、900/901）
-//   2. _config.stellar.yml 背景图 preload 的 media 属性（901/900）
-//      与 body_end 注入脚本里的 RIGHTBAR_DRAWER_MAX
+//   1. source/css/site-custom.css 媒体查询字面量（1180/1181 右栏、768/769 左栏、900 背景图）
+//   2. _config.stellar.yml 背景图 preload 的 media 属性（901/900）、body_end 注入脚本里的
+//      RIGHTBAR_DRAWER_MAX，以及 head_end 注入脚本里的 LEFTBAR_DRAWER_MAX
 //   3. patches/hexo-theme-stellar+2.0.0.patch 里主题的 rightbarDrawerQuery / leftbar*Query
 // 另外 source/music/index.md 自带 <style> 也用了 1180/1181，一并校验。
 const fs = require('fs');
 const path = require('path');
 
 const RIGHTBAR_DRAWER_MAX = 1180;
-const LEFTBAR_DRAWER_MAX = 900;
+const LEFTBAR_DRAWER_MAX = 768;
+// 背景图切换断点（与左栏无关，保持独立）
+const BACKGROUND_MAX = 900;
 
 function read(relative) {
   return fs.readFileSync(path.join(hexo.base_dir, relative), 'utf8');
@@ -43,7 +45,15 @@ function check() {
     errors.push(`RIGHTBAR_DRAWER_MAX 为 ${jsConstant[1]}，应为 ${RIGHTBAR_DRAWER_MAX}`);
   }
 
-  // 1b. 背景图 preload 的 media 属性必须与断点一致（桌面 901+ / 移动 ≤900）
+  // 1b. 左栏抽屉断点（注入脚本首帧前决定默认可见性）
+  const leftJsConstant = config.match(/var LEFTBAR_DRAWER_MAX = (\d+);/);
+  if (!leftJsConstant) {
+    errors.push('head_end 注入脚本里找不到 `var LEFTBAR_DRAWER_MAX = ...;`');
+  } else if (Number(leftJsConstant[1]) !== LEFTBAR_DRAWER_MAX) {
+    errors.push(`LEFTBAR_DRAWER_MAX 为 ${leftJsConstant[1]}，应为 ${LEFTBAR_DRAWER_MAX}`);
+  }
+
+  // 1c. 背景图 preload 的 media 属性必须与断点一致（桌面 901+ / 移动 ≤900）
   const preloadDesktop = (config.match(/media="\(min-width: 901px\)"/g) || []).length;
   const preloadMobile = (config.match(/media="\(max-width: 900px\)"/g) || []).length;
   if (preloadDesktop !== 1 || preloadMobile !== 1) {
@@ -58,8 +68,9 @@ function check() {
   const expected = [
     ['max', RIGHTBAR_DRAWER_MAX, 2],      // 抽屉样式、透明背景（音乐抽屉改为收起态，不再用它）
     ['min', RIGHTBAR_DRAWER_MAX + 1, 1],  // 无右栏页面固定侧栏
-    ['max', LEFTBAR_DRAWER_MAX, 2],       // 两处左栏抽屉
-    ['min', LEFTBAR_DRAWER_MAX + 1, 1]    // 折叠态区间
+    ['max', LEFTBAR_DRAWER_MAX, 1],       // 左栏抽屉/窄条区间
+    ['min', LEFTBAR_DRAWER_MAX + 1, 2],   // 左栏常驻：占位网格 + 无右栏页固定侧栏
+    ['max', BACKGROUND_MAX, 1]            // 窄屏背景图
   ];
   expected.forEach(([kind, width, count]) => {
     const actual = countLiteral(css, kind, width);
@@ -72,10 +83,15 @@ function check() {
   const widthRe = /(?:max|min)-width:\s*(\d+)px/g;
   let match;
   while ((match = widthRe.exec(css))) widths.push(Number(match[1]));
-  const nearMiss = [RIGHTBAR_DRAWER_MAX - 1, RIGHTBAR_DRAWER_MAX + 2, LEFTBAR_DRAWER_MAX - 1, LEFTBAR_DRAWER_MAX + 2];
+  const nearMiss = [
+    RIGHTBAR_DRAWER_MAX - 1, RIGHTBAR_DRAWER_MAX + 2,
+    LEFTBAR_DRAWER_MAX - 1, LEFTBAR_DRAWER_MAX + 2,
+    BACKGROUND_MAX - 1, BACKGROUND_MAX + 1
+  ];
   widths.forEach(width => {
     if (nearMiss.includes(width)) {
-      errors.push(`source/css/site-custom.css 出现可疑断点 ${width}px（应使用 ${RIGHTBAR_DRAWER_MAX}/${RIGHTBAR_DRAWER_MAX + 1} 或 ${LEFTBAR_DRAWER_MAX}/${LEFTBAR_DRAWER_MAX + 1}）`);
+      errors.push(`source/css/site-custom.css 出现可疑断点 ${width}px（应使用 ${RIGHTBAR_DRAWER_MAX}/${RIGHTBAR_DRAWER_MAX + 1}、` +
+        `${LEFTBAR_DRAWER_MAX}/${LEFTBAR_DRAWER_MAX + 1} 或 ${BACKGROUND_MAX}）`);
     }
   });
 
@@ -114,7 +130,7 @@ function check() {
   if (errors.length) {
     throw new Error('[breakpoints] 断点校验失败：\n- ' + errors.join('\n- '));
   }
-  console.log('[breakpoints] 断点校验通过（1180/1181、900/901 与注入 JS、patches 一致）');
+  console.log('[breakpoints] 断点校验通过（1180/1181、768/769、背景图 900、注入 JS 与 patches 一致）');
 }
 
 hexo.extend.filter.register('before_generate', check);

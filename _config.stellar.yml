@@ -196,12 +196,23 @@ inject:
       (function() {
         var root = document.documentElement;
         var LEFTBAR_KEY = 'stellar:v2:leftbar-state';
+        var VISIBLE_KEY = 'stellar:v2:leftbar-visible';
+        // 左栏抽屉断点唯一来源：≤768 抽屉/窄条，>768 常驻。
+        // 必须与 CSS 的 768/769、patches 里的 leftbar*Query 一致。
+        var LEFTBAR_DRAWER_MAX = 768;
         try {
           var s = localStorage.getItem(LEFTBAR_KEY);
           root.dataset.leftbarState = (s === 'collapsed') ? 'collapsed' : 'expanded';
         } catch(e) {
           root.dataset.leftbarState = 'expanded';
         }
+        // 可见性与形态分开存：没有偏好时 ≤768 默认隐藏（不占位、无窄条），其余宽度显示
+        var leftbarVisible = window.innerWidth > LEFTBAR_DRAWER_MAX ? 'shown' : 'hidden';
+        try {
+          var v = localStorage.getItem(VISIBLE_KEY);
+          if (v === 'shown' || v === 'hidden') leftbarVisible = v;
+        } catch(e) {}
+        root.dataset.leftbarVisible = leftbarVisible;
         function setVh() {
           var vh = window.innerHeight * 0.01;
           root.style.setProperty('--vh', vh + 'px');
@@ -307,23 +318,28 @@ inject:
 
       document.addEventListener('DOMContentLoaded', function() {
         var menuBtn = document.getElementById('mbb-menu-btn');
-        var shell = document.querySelector('.site-shell');
 
         syncPageChrome();
 
-        // 移动端菜单按钮：复用主题的左栏抽屉逻辑（滚动/遮罩/ESC 由主题处理）
-        if (menuBtn && shell) {
+        // 移动端菜单按钮：复用主题的左栏显隐开关（形态由左栏内的收纳按钮单独控制）
+        if (menuBtn) {
+          var syncMenu = function() {
+            menuBtn.setAttribute('aria-expanded',
+              document.documentElement.getAttribute('data-leftbar-visible') === 'shown' ? 'true' : 'false');
+          };
           menuBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             var shellBtn = document.querySelector('[data-shell-action="toggle-leftbar-drawer"]');
             if (shellBtn) shellBtn.click();
-            menuBtn.setAttribute('aria-expanded', shell.getAttribute('data-drawer') === 'leftbar' ? 'true' : 'false');
+            syncMenu();
           });
           if ('MutationObserver' in window) {
-            new MutationObserver(function() {
-              menuBtn.setAttribute('aria-expanded', shell.getAttribute('data-drawer') === 'leftbar' ? 'true' : 'false');
-            }).observe(shell, { attributes: true, attributeFilter: ['data-drawer'] });
+            new MutationObserver(syncMenu).observe(document.documentElement, {
+              attributes: true,
+              attributeFilter: ['data-leftbar-visible']
+            });
           }
+          syncMenu();
         }
       });
 

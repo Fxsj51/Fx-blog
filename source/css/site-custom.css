@@ -3,15 +3,16 @@
  * 原先内联在 _config.stellar.yml 的 inject.head_end 里，随每个页面重复下发；
  * 拆成独立文件后全站共享一份缓存，且由 tools/minify.js 统一压缩。
  * 注意：
- *  - 媒体查询断点必须保持 1180/1181、900/901，scripts/breakpoints.js 会构建期校验；
+ *  - 媒体查询断点必须保持 1180/1181（右栏）、768/769（左栏）、900（背景图），
+ *    scripts/breakpoints.js 会构建期校验；
  *  - 图片路径用根绝对 /images/：hexo server（root=/）直接可用，
  *    GitHub Pages 子路径部署由 tools/minify.js 的 fixLocalPaths 统一补前缀。
  */
   /*
-   * 断点同源：本段媒体查询里的 1180/1181、900/901 与 body_end 注入脚本的
-   * RIGHTBAR_DRAWER_MAX、patches/hexo-theme-stellar+2.0.0.patch 里的
-   * rightbarDrawerQuery / leftbar*Query 必须一致。
-   * 改动任意一处都会让 scripts/breakpoints.js 的构建期校验失败。
+   * 断点同源：本段媒体查询里的 1180/1181（右栏）、768/769（左栏）与 body_end
+   * 注入脚本的 RIGHTBAR_DRAWER_MAX、head_end 注入脚本的 LEFTBAR_DRAWER_MAX、
+   * patches/hexo-theme-stellar+2.0.0.patch 里的 rightbarDrawerQuery / leftbar*Query
+   * 必须一致。改动任意一处都会让 scripts/breakpoints.js 的构建期校验失败。
    */
   :root {
     --leftbar-w: 340px;
@@ -318,6 +319,21 @@
     grid-template-columns: var(--leftbar-w-collapsed) minmax(0, 1000px) !important;
   }
   /*
+   * 可见性与形态是两个独立维度：hidden 只让整栏移出并不占位，
+   * 不改 data-leftbar-state —— 恢复时仍按原形态（full / rail）呈现。
+   */
+  @media screen and (min-width: 769px) {
+    html[data-leftbar-visible='hidden'] aside#leftbar-region {
+      display: none !important;
+    }
+    html[data-leftbar-visible='hidden'] .site-workspace {
+      grid-template-columns: 0 minmax(0, 1000px) var(--rightbar-col-w) !important;
+    }
+    html[data-leftbar-visible='hidden'] .site-shell:not([data-regions~='rightbar']) .site-workspace {
+      grid-template-columns: 0 minmax(0, 1000px) !important;
+    }
+  }
+  /*
    * 无右栏页面（≥1181px，右栏为常驻列的区间）：
    * 1. 两列布局会让整块重新居中，左栏因此随页面切换横向位移。把左栏改为固定定位，直接钉在与首页/文章页
    *    相同的横向位置，不再受网格列数变化（含换页时的列过渡）影响。
@@ -587,9 +603,9 @@
     }
   }
 
-  /* 900px 及以下：左栏收起为抽屉，正文恢复全宽；901 起左栏常驻 */
-  @media (max-width: 900px) {
-    /* 左栏隐藏时，顶部显示头像+站名 */
+  /* 768px 及以下：左栏默认隐藏；显示时按记忆形态渲染，769 起常驻 */
+  @media (max-width: 768px) {
+    /* 顶部栏：头像+站名，也是移动端左栏唯一的显隐开关（菜单按钮） */
     #mobile-brand-bar { display: flex !important; }
 
     .site-workspace {
@@ -609,17 +625,20 @@
       top: 76px !important;
       left: 16px !important;
       bottom: 80px !important;
-      width: min(300px, 85vw) !important;
-      min-width: auto !important;
-      max-width: 85vw !important;
+      width: 340px !important;
+      min-width: 0 !important;
+      max-width: calc(100vw - 32px) !important;
       height: auto !important;
       z-index: var(--z-drawer-btn) !important;
       transform: translateX(calc(-100% - 32px)) !important;
       transition: transform var(--dur-drawer) ease-out !important;
       grid-column: auto !important;
     }
-    /* 左栏抽屉：由主题的 data-drawer 状态控制显隐（顶部菜单按钮触发） */
-    .site-shell[data-drawer='leftbar'] aside#leftbar-region { transform: translateX(0) !important; }
+    /* 显示态：full 从左侧滑出抽屉，rail 直接显示窄条；隐藏态保持上面的移出位移 */
+    html[data-leftbar-visible='shown'] aside#leftbar-region,
+    .site-shell[data-drawer='leftbar'] aside#leftbar-region {
+      transform: translateX(0) !important;
+    }
     #leftbar-region .site-region__surface {
       position: static !important;
       margin: 0 !important;
@@ -631,6 +650,19 @@
       right: auto !important;
       top: auto !important;
       bottom: auto !important;
+    }
+    /* rail 形态（64px 由全局折叠规则给出）：表面贴左内缩 8px，与桌面窄条一致 */
+    html[data-leftbar-state='collapsed'] #leftbar-region .site-region__surface {
+      position: absolute !important;
+      top: 20px !important;
+      bottom: 20px !important;
+      left: 8px !important;
+      right: 0 !important;
+      width: auto !important;
+      height: auto !important;
+      max-height: none !important;
+      padding: 20px var(--gap-xs) !important;
+      align-items: center !important;
     }
   }
 
@@ -648,8 +680,7 @@
   .brand-title .brand-name { font-size: var(--fs-22) !important; font-weight: var(--fw-semibold) !important; margin-bottom: var(--gap-4) !important; color: var(--text-primary) !important; }
   .brand-title .brand-tagline { font-size: var(--fs-13) !important; opacity: 0.7 !important; color: var(--text-primary) !important; }
 
-  /* 折叠态只作用于左栏常驻的区间（≥901px），抽屉始终展示完整内容（与参考站一致） */
-  @media (min-width: 901px) {
+  /* 折叠态（rail）在所有宽度生效：>768 是窄栏，≤768 是 64px 窄条 */
   html[data-leftbar-state="collapsed"] .brand-title,
   html[data-leftbar-state="collapsed"] .menu .ui-collection__content,
   html[data-leftbar-state="collapsed"] .search-trigger .ui-collection__content,
@@ -701,16 +732,18 @@
     align-items: center !important;
   }
   /*
-   * 无右栏页面在 901–1180 常驻区间：左栏同样固定。
+   * 无右栏页面在 769–1180 常驻区间：左栏同样固定。
    * .site-workspace 为防横向溢出设了 overflow-x: hidden，会把它变成滚动容器，
    * 左栏的 sticky 因此以 workspace 为参照、跟随页面一起滚走；这里改为 fixed。
    * 不写 inset-inline-start：保留网格给的静态位置，展开态贴 0、折叠态沿用居中偏移，
    * ≥1181 时仍由上面的 --nd-off 规则接管横向位置，互不覆盖。
+   * ≤768 是抽屉（top: 76px），不能被这条规则覆盖。
    */
-  .site-shell:not([data-regions~='rightbar']) aside#leftbar-region {
-    position: fixed !important;
-    top: 0 !important;
-  }
+  @media screen and (min-width: 769px) {
+    .site-shell:not([data-regions~='rightbar']) aside#leftbar-region {
+      position: fixed !important;
+      top: 0 !important;
+    }
   }
 
   .post-list { display: flex !important; flex-direction: column !important; gap: var(--gap-2xl) !important; width: 100% !important; }

@@ -1,18 +1,188 @@
 diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/hexo-theme-stellar/source/js/main.js
-index 28ff615..b1b27d2 100644
+index 28ff615..ab0e92c 100644
 --- a/node_modules/hexo-theme-stellar/source/js/main.js
 +++ b/node_modules/hexo-theme-stellar/source/js/main.js
-@@ -97,8 +97,8 @@ const hud = {
+@@ -97,6 +97,7 @@ const hud = {
  
  const siteShell = document.querySelector('.site-shell');
  const leftbarStateKey = 'stellar:v2:leftbar-state';
--const leftbarDrawerQuery = '(max-width: 768px)';
--const leftbarHiddenQuery = '(max-width: 768px)';
-+const leftbarDrawerQuery = '(max-width: 900px)';
-+const leftbarHiddenQuery = '(max-width: 900px)';
++const leftbarVisibleKey = 'stellar:v2:leftbar-visible';
+ const leftbarDrawerQuery = '(max-width: 768px)';
+ const leftbarHiddenQuery = '(max-width: 768px)';
  const rightbarDrawerQuery = '(max-width: 1180px)';
- let shellDrawerTrigger = null;
- let searchDialogTrigger = null;
+@@ -118,9 +119,44 @@ function regionUsesDrawer(region) {
+   return window.matchMedia(region === 'leftbar' ? leftbarDrawerQuery : rightbarDrawerQuery).matches;
+ }
+ 
++// 左栏两个互相独立的维度：形态（full 340 / rail 64）与可见性（shown / hidden）。
++// 收纳按钮只改形态，抽屉开关只改可见性，两者分别持久化，互不覆盖。
++function leftbarForm() {
++  return document.documentElement.dataset.leftbarState === 'collapsed' ? 'rail' : 'full';
++}
++
++function leftbarIsVisible() {
++  return document.documentElement.dataset.leftbarVisible !== 'hidden';
++}
++
++function readLeftbarVisible() {
++  try {
++    const stored = localStorage.getItem(leftbarVisibleKey);
++    if (stored === 'shown') return true;
++    if (stored === 'hidden') return false;
++  } catch (error) {}
++  // 没有偏好时：抽屉区间（≤768）默认隐藏，其余宽度默认显示
++  return !regionUsesDrawer('leftbar');
++}
++
++function applyLeftbarVisible(visible, persist) {
++  document.documentElement.dataset.leftbarVisible = visible ? 'shown' : 'hidden';
++  if (persist) {
++    try { localStorage.setItem(leftbarVisibleKey, visible ? 'shown' : 'hidden'); } catch (error) {}
++  }
++  // 抽屉链路由主题的 data-drawer 承载（遮罩、焦点与惰性都挂在它上面）：
++  // 只有「抽屉区间 + 可见 + full 形态」才打开，rail 形态是窄条，不能带遮罩
++  if (siteShell) {
++    if (regionUsesDrawer('leftbar') && visible && leftbarForm() === 'full') siteShell.dataset.drawer = 'leftbar';
++    else if (siteShell.dataset.drawer === 'leftbar') delete siteShell.dataset.drawer;
++  }
++  syncDrawerControls();
++  syncLeftbarControls();
++}
++
+ function regionHiddenWhenClosed(region) {
+   if (typeof window.matchMedia !== 'function') return false;
+-  if (region === 'leftbar') return window.matchMedia(leftbarHiddenQuery).matches;
++  if (region === 'leftbar') return !leftbarIsVisible();
+   return regionUsesDrawer(region);
+ }
+ 
+@@ -138,15 +174,11 @@ function setRegionInteractive(region, interactive) {
+ 
+ function syncLeftbarControls() {
+   syncRightbarFocus();
+-  const drawer = regionUsesDrawer('leftbar');
+-  const expanded = drawer
+-    ? siteShell?.dataset.drawer === 'leftbar'
+-    : document.documentElement.dataset.leftbarState !== 'collapsed';
++  // 收纳按钮只改形态，所以它的 aria 始终反映 form（与宽度、可见性无关）
++  const rail = leftbarForm() === 'rail';
+   document.querySelectorAll('[data-shell-action="toggle-leftbar"]').forEach(function (button) {
+-    button.setAttribute('aria-expanded', String(expanded));
+-    button.setAttribute('aria-label', drawer
+-      ? (expanded ? 'Close leftbar' : 'Open leftbar')
+-      : (expanded ? 'Collapse leftbar' : 'Expand leftbar'));
++    button.setAttribute('aria-expanded', String(!rail));
++    button.setAttribute('aria-label', rail ? 'Expand leftbar' : 'Collapse leftbar');
+   });
+ }
+ 
+@@ -163,12 +195,15 @@ function syncDrawerControls() {
+   syncRightbarFocus();
+   const openRegion = siteShell?.dataset.drawer || '';
+   ['leftbar', 'rightbar'].forEach(function (region) {
+-    const open = openRegion === region && regionUsesDrawer(region);
++    // 左栏的开关只表示可见性（rail 可见时没有 data-drawer）；右栏仍是抽屉本体
++    const open = region === 'leftbar'
++      ? leftbarIsVisible()
++      : (openRegion === region && regionUsesDrawer(region));
+     document.querySelectorAll('[data-shell-action="toggle-' + region + '-drawer"]').forEach(function (button) {
+       button.setAttribute('aria-expanded', String(open));
+       button.setAttribute('aria-label', (open ? 'Close ' : 'Open ') + region);
+     });
+-    setRegionInteractive(region, open || !regionUsesDrawer(region));
++    setRegionInteractive(region, region === 'leftbar' ? leftbarIsVisible() : (open || !regionUsesDrawer(region)));
+   });
+ }
+ 
+@@ -180,16 +215,41 @@ function focusRegion(region) {
+ function dismissDrawer(options) {
+   if (!siteShell) return;
+   const restoreFocus = options?.restoreFocus !== false;
+-  const wasOpen = !!siteShell.dataset.drawer;
++  const persist = options?.persist !== false;
++  const wasOpenRegion = siteShell.dataset.drawer || '';
++  if (!wasOpenRegion) return;
+   delete siteShell.dataset.drawer;
+-  syncDrawerControls();
+-  syncLeftbarControls();
+-  if (wasOpen && restoreFocus && shellDrawerTrigger?.focus) shellDrawerTrigger.focus();
+-  if (wasOpen) shellDrawerTrigger = null;
++  // 左栏抽屉关闭 = 隐藏：只翻转可见性，form 原样保留
++  if (wasOpenRegion === 'leftbar') {
++    applyLeftbarVisible(false, persist);
++  } else {
++    syncDrawerControls();
++    syncLeftbarControls();
++  }
++  if (restoreFocus && shellDrawerTrigger?.focus) shellDrawerTrigger.focus();
++  shellDrawerTrigger = null;
++}
++
++// 左栏可见性开关（移动端菜单按钮 / 主题 dock 按钮）
++function toggleLeftbarVisible(trigger) {
++  if (leftbarIsVisible()) {
++    applyLeftbarVisible(false, true);
++    shellDrawerTrigger = null;
++    return;
++  }
++  shellDrawerTrigger = trigger || document.activeElement;
++  applyLeftbarVisible(true, true);
++  // 只有 full 形态在抽屉区间才带遮罩，此时把焦点移入面板；rail 窄条不抢焦点
++  if (siteShell?.dataset.drawer === 'leftbar') focusRegion('leftbar');
+ }
+ 
+ function toggleDrawer(region, trigger) {
+-  if (!siteShell || !regionUsesDrawer(region) || !regionElement(region)) return;
++  if (!siteShell || !regionElement(region)) return;
++  if (region === 'leftbar') {
++    toggleLeftbarVisible(trigger);
++    return;
++  }
++  if (!regionUsesDrawer(region)) return;
+   const open = siteShell.dataset.drawer === region;
+   if (open) {
+     dismissDrawer();
+@@ -207,14 +267,11 @@ function toggleLeftbarState() {
+   const state = root.dataset.leftbarState === 'collapsed' ? 'expanded' : 'collapsed';
+   root.dataset.leftbarState = state;
+   try { localStorage.setItem(leftbarStateKey, state); } catch (error) {}
+-  syncLeftbarControls();
++  // 抽屉区间里只有 full 才该有遮罩：形态变了就重算一次（不改可见性、不落盘）
++  applyLeftbarVisible(leftbarIsVisible(), false);
+ }
+ 
+-function toggleLeftbar(trigger) {
+-  if (regionUsesDrawer('leftbar')) {
+-    toggleDrawer('leftbar', trigger);
+-    return;
+-  }
++function toggleLeftbar() {
+   toggleLeftbarState();
+ }
+ 
+@@ -363,8 +420,8 @@ const shellActions = {
+   'toggle-toc': function (trigger) { toggleToc(trigger); }
+ };
+ 
+-syncLeftbarControls();
+-syncDrawerControls();
++// 左栏：可见性先按偏好落到 dataset，再统一重算抽屉链路（≤768 且 full 才带遮罩）
++applyLeftbarVisible(readLeftbarVisible(), false);
+ document.addEventListener('pointerdown', function () {
+   shellInputModality = 'pointer';
+ });
+@@ -401,8 +458,9 @@ if (typeof window.matchMedia === 'function') {
+     return window.matchMedia(query);
+   }).forEach(function (media) {
+     const handleChange = function () {
+-      dismissDrawer({ restoreFocus: false });
+-      syncDrawerControls();
++      // 跨断点只重算渲染形态：左栏可见性不因宽度变化而改写，也不落盘
++      if (siteShell?.dataset.drawer === 'rightbar') dismissDrawer({ restoreFocus: false });
++      applyLeftbarVisible(leftbarIsVisible(), false);
+     };
+     if (typeof media.addEventListener === 'function') media.addEventListener('change', handleChange);
+     else if (typeof media.addListener === 'function') media.addListener(handleChange);
 diff --git a/node_modules/hexo-theme-stellar/source/js/runtime/index.js b/node_modules/hexo-theme-stellar/source/js/runtime/index.js
 index 42ddcd5..b8ccf53 100644
 --- a/node_modules/hexo-theme-stellar/source/js/runtime/index.js
