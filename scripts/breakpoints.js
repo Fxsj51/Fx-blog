@@ -7,8 +7,9 @@
 //   1. source/css/site-custom.css 媒体查询字面量
 //      （1180/1181：右栏抽屉；667/668、919/920、1024/1025：左栏梯次；900：窄屏背景图）
 //   2. _config.stellar.yml 背景图 preload 的 media 属性（901/900）、body_end 注入脚本里的
-//      RIGHTBAR_DRAWER_MAX，以及 head_end 注入脚本里的 LEFTBAR_DRAWER_MAX（=667，抽屉上限）
-//      与 LEFTBAR_FULL_MIN（=1025，无条件完整形态下限）
+//      RIGHTBAR_DRAWER_MAX，以及 head_end 注入脚本里的 LEFTBAR_DRAWER_MAX（=667，抽屉上限）、
+//      LEFTBAR_RAIL_MAX（=919，668–919 固定 64 窄条的上界）与 LEFTBAR_FULL_MIN（=1025，
+//      无条件完整形态下限）
 //   3. patches/hexo-theme-stellar+2.0.0.patch 里主题的 rightbarDrawerQuery / leftbar*Query
 // 另外 source/music/index.md 自带 <style> 也用了 1180/1181，一并校验。
 const fs = require('fs');
@@ -62,6 +63,16 @@ function check() {
     errors.push('head_end 注入脚本里找不到 `var LEFTBAR_FULL_MIN = ...;`');
   } else if (Number(leftFullJsConstant[1]) !== LEFTBAR_FULL_MIN) {
     errors.push(`LEFTBAR_FULL_MIN 为 ${leftFullJsConstant[1]}，应为 ${LEFTBAR_FULL_MIN}`);
+  }
+  // 1b2. 668–919 固定 64 窄条的上界（首帧归一 collapsed）
+  const leftRailJsConstant = config.match(/var LEFTBAR_RAIL_MAX = (\d+);/);
+  if (!leftRailJsConstant) {
+    errors.push('head_end 注入脚本里找不到 `var LEFTBAR_RAIL_MAX = ...;`');
+  } else if (Number(leftRailJsConstant[1]) !== LEFTBAR_RAIL_MAX) {
+    errors.push(`LEFTBAR_RAIL_MAX 为 ${leftRailJsConstant[1]}，应为 ${LEFTBAR_RAIL_MAX}`);
+  }
+  if (!config.match(/window\.innerWidth <= LEFTBAR_RAIL_MAX/)) {
+    errors.push('head_end 注入脚本里找不到 `window.innerWidth <= LEFTBAR_RAIL_MAX`（668–919 首帧归一窄条）');
   }
 
   // 1c. 背景图 preload 的 media 属性必须与断点一致（桌面 901+ / 移动 ≤900）

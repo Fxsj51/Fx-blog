@@ -589,8 +589,8 @@
     }
   }
 
-  /* 667px 及以下：左栏滑出抽屉（移动顶栏菜单开合）；668–919：仅 64 窄条（expanded 视为隐藏）；
-     920–1024：完整/窄条可切换；≥1025：永远完整（≥1181 叠加右栏三栏） */
+  /* 667px 及以下：左栏滑出抽屉（移动顶栏菜单开合）；668–919：64 窄条常驻，
+     展开走抽屉浮层；920–1024：完整/窄条可切换；≥1025：永远完整（≥1181 叠加右栏三栏） */
   @media (max-width: 667px) {
     /* 顶部栏：头像+站名，也是移动端左栏唯一的显隐开关（菜单按钮） */
     #mobile-brand-bar { display: flex !important; }
@@ -673,28 +673,53 @@
   }
 
   /*
-   * 668–919：只有 64px 窄条，完整形态在本段不存在。
-   * form=expanded 视为「隐藏」：整条移出布局、首列归零；668–768 的主题 reserve 同时归零。
-   * 本段常驻移动顶栏，左栏隐藏/展开统一由顶栏菜单按钮负责，不再保留任何浮层入口。
+   * 668–919：收起态固定 64px 窄条常驻，本段不做内联展开（主栏始终只让出 64）。
+   * 窄条上的展开按钮与顶栏菜单键都打开抽屉浮层：完整 340 覆盖在内容之上、带遮罩、
+   * 点外面收起，关闭后回到 64 窄条。抽屉打开期间 JS 会把 DOM 形态临时切成 expanded
+   * （只为渲染完整内容，不落盘），所以首列宽度必须与形态无关，恒为 64。
    */
   @media screen and (min-width: 668px) and (max-width: 919px) {
-    html[data-leftbar-state="expanded"] .site-workspace {
-      grid-template-columns: 0 minmax(0, 1000px) var(--rightbar-col-w) !important;
+    html[data-leftbar-state] .site-workspace {
+      grid-template-columns: var(--leftbar-w-collapsed) minmax(0, 1000px) var(--rightbar-col-w) !important;
     }
-    html[data-leftbar-state="expanded"] .site-shell:not([data-regions~='rightbar']) .site-workspace {
-      grid-template-columns: 0 minmax(0, 1000px) !important;
+    html[data-leftbar-state] .site-shell:not([data-regions~='rightbar']) .site-workspace {
+      grid-template-columns: var(--leftbar-w-collapsed) minmax(0, 1000px) !important;
     }
-    html[data-leftbar-state="expanded"] .site-shell {
+    /* 主栏宽度由网格给出：撤销 668–768 的 reserve 让位，避免第二次扣减 */
+    .site-shell {
       --shell-left-reserve: 0px;
       --shell-side-reserve: max(0px, var(--shell-right-reserve));
-    }
-    html[data-leftbar-state="expanded"] .site-region--leftbar {
-      display: none !important;
     }
     /* 移动顶栏在本段常驻；顶栏是 fixed，工作区让出高度，左栏 sticky 停在顶栏下方 */
     #mobile-brand-bar { display: flex !important; }
     .site-workspace { padding-top: 80px; }
     .site-region--leftbar { top: 80px; }
+
+    /* 抽屉浮层：脱离网格覆盖在内容之上，主栏宽度不变 */
+    .site-shell[data-drawer='leftbar'] aside#leftbar-region {
+      position: fixed !important;
+      top: 76px !important;
+      left: 16px !important;
+      bottom: 80px !important;
+      width: 340px !important;
+      min-width: 0 !important;
+      max-width: calc(100vw - 32px) !important;
+      height: auto !important;
+      z-index: var(--z-drawer-btn) !important;
+      transform: none !important;
+    }
+    .site-shell[data-drawer='leftbar'] #leftbar-region .site-region__surface {
+      position: static !important;
+      margin: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-height: calc(var(--dvh) - 96px) !important;
+      min-width: 0 !important;
+      left: auto !important;
+      right: auto !important;
+      top: auto !important;
+      bottom: auto !important;
+    }
   }
 
   /* ≥1025：永远完整 340。形态由首帧脚本与 JS 归一到 expanded（不写存储），收纳按钮无意义 */

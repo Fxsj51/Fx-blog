@@ -28,11 +28,11 @@ diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/he
  const rightbarDrawerQuery = '(max-width: 1180px)';
  let shellDrawerTrigger = null;
  let searchDialogTrigger = null;
-@@ -118,9 +121,61 @@ function regionUsesDrawer(region) {
+@@ -118,9 +121,65 @@ function regionUsesDrawer(region) {
    return window.matchMedia(region === 'leftbar' ? leftbarDrawerQuery : rightbarDrawerQuery).matches;
  }
  
-+// 668–919：只有 64 窄条，expanded 表示整条隐藏；≥1025：无条件完整形态
++// 668–919：只有 64 窄条（展开走抽屉浮层）；≥1025：无条件完整形态
 +function leftbarRailOnly() {
 +  return typeof window.matchMedia === 'function' && window.matchMedia(leftbarRailOnlyQuery).matches;
 +}
@@ -59,11 +59,15 @@ diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/he
 +  return document.documentElement.dataset.leftbarVisible !== 'hidden';
 +}
 +
-+// 实际渲染出来没有：抽屉区间看可见性；668–919 的 expanded 表示整条隐藏
++// 实际渲染出来没有：668–919 的 64 窄条常驻（抽屉浮层是它上面的一层）；其余区间看可见性
 +function leftbarShown() {
-+  if (!leftbarIsVisible()) return false;
-+  if (leftbarRailOnly() && leftbarForm() === 'full') return false;
-+  return true;
++  if (leftbarRailOnly()) return true;
++  return leftbarIsVisible();
++}
++
++// 668–919 的抽屉浮层是否打开
++function leftbarOverlayOpen() {
++  return !!siteShell && siteShell.dataset.drawer === 'leftbar';
 +}
 +
 +function readLeftbarVisible() {
@@ -75,9 +79,9 @@ diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/he
 +  document.documentElement.dataset.leftbarVisible = visible ? 'shown' : 'hidden';
 +  // persist 参数保留以兼容调用方；本站语义下可见性一律不落盘——
 +  // 「隐藏」是临时状态（避免窄窗收起泄漏为桌面偏好），「显示」由 ≥1181 断点天然保证。
-+  // 只有「抽屉区间 + 可见 + full 形态」才打开，rail 形态是窄条，不能带遮罩
-+  if (siteShell) {
-+    if (regionUsesDrawer('leftbar') && visible && leftbarForm() === 'full') siteShell.dataset.drawer = 'leftbar';
++  // 只有「≤667 抽屉 + 可见 + full 形态」才打开浮层；668–919 的浮层由 open/closeLeftbarOverlay 管理
++  if (siteShell && regionUsesDrawer('leftbar')) {
++    if (visible && leftbarForm() === 'full') siteShell.dataset.drawer = 'leftbar';
 +    else if (siteShell.dataset.drawer === 'leftbar') delete siteShell.dataset.drawer;
 +  }
 +  syncDrawerControls();
@@ -91,7 +95,7 @@ diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/he
    return regionUsesDrawer(region);
  }
  
-@@ -138,15 +193,18 @@ function setRegionInteractive(region, interactive) {
+@@ -138,15 +197,19 @@ function setRegionInteractive(region, interactive) {
  
  function syncLeftbarControls() {
    syncRightbarFocus();
@@ -107,9 +111,10 @@ diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/he
 -      ? (expanded ? 'Close leftbar' : 'Open leftbar')
 -      : (expanded ? 'Collapse leftbar' : 'Expand leftbar'));
 +    if (railOnly) {
-+      // 668–919：按钮表达「隐藏窄条 / 显示窄条」，不是展开/收起
-+      button.setAttribute('aria-expanded', String(rail));
-+      button.setAttribute('aria-label', rail ? 'Hide leftbar' : 'Show leftbar');
++      // 668–919：窄条上的按钮只负责开合完整抽屉浮层（窄条本身常驻）
++      const open = leftbarOverlayOpen();
++      button.setAttribute('aria-expanded', String(open));
++      button.setAttribute('aria-label', open ? 'Close leftbar' : 'Expand leftbar');
 +      return;
 +    }
 +    // 其余区间：按钮只改形态，aria 反映 form（与宽度、可见性无关）
@@ -118,14 +123,14 @@ diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/he
    });
  }
  
-@@ -163,12 +221,15 @@ function syncDrawerControls() {
+@@ -163,12 +226,15 @@ function syncDrawerControls() {
    syncRightbarFocus();
    const openRegion = siteShell?.dataset.drawer || '';
    ['leftbar', 'rightbar'].forEach(function (region) {
 -    const open = openRegion === region && regionUsesDrawer(region);
-+    // 左栏的开关只表示「栏是否真的在」，右栏仍是抽屉本体
++    // 左栏：≤667 的抽屉看可见性，668–919 的浮层看 data-drawer，其余区间看「栏是否在」
 +    const open = region === 'leftbar'
-+      ? leftbarShown()
++      ? (leftbarRailOnly() ? leftbarOverlayOpen() : leftbarShown())
 +      : (openRegion === region && regionUsesDrawer(region));
      document.querySelectorAll('[data-shell-action="toggle-' + region + '-drawer"]').forEach(function (button) {
        button.setAttribute('aria-expanded', String(open));
@@ -136,19 +141,19 @@ diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/he
    });
  }
  
-@@ -180,16 +241,46 @@ function focusRegion(region) {
+@@ -180,16 +246,73 @@ function focusRegion(region) {
  function dismissDrawer(options) {
    if (!siteShell) return;
    const restoreFocus = options?.restoreFocus !== false;
 -  const wasOpen = !!siteShell.dataset.drawer;
-+  const persist = options?.persist !== false;
 +  const wasOpenRegion = siteShell.dataset.drawer || '';
 +  if (!wasOpenRegion) return;
++  // 668–919：关掉浮层、回到 64 窄条（形态临时切回 collapsed，不落盘）
++  if (wasOpenRegion === 'leftbar' && leftbarRailOnly()) {
++    closeLeftbarOverlay({ restoreFocus: restoreFocus });
++    return;
++  }
    delete siteShell.dataset.drawer;
--  syncDrawerControls();
--  syncLeftbarControls();
--  if (wasOpen && restoreFocus && shellDrawerTrigger?.focus) shellDrawerTrigger.focus();
--  if (wasOpen) shellDrawerTrigger = null;
 +  // 左栏抽屉关闭 = 隐藏：只翻转可见性，form 原样保留
 +  if (wasOpenRegion === 'leftbar') {
 +    applyLeftbarVisible(false, false);
@@ -156,6 +161,30 @@ diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/he
 +    syncDrawerControls();
 +    syncLeftbarControls();
 +  }
++  if (restoreFocus && shellDrawerTrigger?.focus) shellDrawerTrigger.focus();
++  shellDrawerTrigger = null;
++}
++
++// 668–919 的抽屉浮层：打开时把 DOM 形态临时切到 full 以渲染完整内容（不落盘），
++// 关闭时切回 collapsed 窄条；离开该档由媒体监听从存储恢复形态。
++function openLeftbarOverlay(trigger) {
++  if (!siteShell) return;
++  shellDrawerTrigger = trigger || document.activeElement;
++  document.documentElement.dataset.leftbarState = 'expanded';
++  document.documentElement.dataset.leftbarVisible = 'shown';
++  siteShell.dataset.drawer = 'leftbar';
+   syncDrawerControls();
+   syncLeftbarControls();
+-  if (wasOpen && restoreFocus && shellDrawerTrigger?.focus) shellDrawerTrigger.focus();
+-  if (wasOpen) shellDrawerTrigger = null;
++  focusRegion('leftbar');
++}
++
++function closeLeftbarOverlay(options) {
++  if (!siteShell) return;
++  const restoreFocus = options?.restoreFocus !== false;
++  delete siteShell.dataset.drawer;
++  setLeftbarState('collapsed', false);
 +  if (restoreFocus && shellDrawerTrigger?.focus) shellDrawerTrigger.focus();
 +  shellDrawerTrigger = null;
 +}
@@ -177,9 +206,10 @@ diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/he
 -  if (!siteShell || !regionUsesDrawer(region) || !regionElement(region)) return;
 +  if (!siteShell || !regionElement(region)) return;
 +  if (region === 'leftbar') {
-+    // 668–919：dock/菜单按钮表达「隐藏/显示窄条」，不涉及抽屉
++    // 668–919：窄条与菜单键都开合同一个抽屉浮层
 +    if (leftbarRailOnly()) {
-+      toggleLeftbarState();
++      if (leftbarOverlayOpen()) dismissDrawer();
++      else openLeftbarOverlay(trigger);
 +      return;
 +    }
 +    toggleLeftbarVisible(trigger);
@@ -189,7 +219,7 @@ diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/he
    const open = siteShell.dataset.drawer === region;
    if (open) {
      dismissDrawer();
-@@ -202,19 +293,23 @@ function toggleDrawer(region, trigger) {
+@@ -202,17 +325,27 @@ function toggleDrawer(region, trigger) {
    focusRegion(region);
  }
  
@@ -214,47 +244,51 @@ diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/he
 +  setLeftbarState(state, true);
  }
  
--function toggleLeftbar(trigger) {
+ function toggleLeftbar(trigger) {
 -  if (regionUsesDrawer('leftbar')) {
 -    toggleDrawer('leftbar', trigger);
--    return;
--  }
-+function toggleLeftbar() {
++  // 668–919：窄条上的展开按钮打开抽屉浮层，不改变形态
++  if (leftbarRailOnly()) {
++    if (leftbarOverlayOpen()) dismissDrawer();
++    else openLeftbarOverlay(trigger);
+     return;
+   }
    toggleLeftbarState();
- }
- 
-@@ -363,8 +458,10 @@ const shellActions = {
+@@ -363,8 +496,11 @@ const shellActions = {
    'toggle-toc': function (trigger) { toggleToc(trigger); }
  };
  
 -syncLeftbarControls();
 -syncDrawerControls();
-+// 左栏：形态先按带宽归一（≥1025 无条件 full，不落盘），再落可见性并重算抽屉链路
++// 左栏：形态先按带宽归一（≥1025 无条件 full、668–919 固定窄条，均不落盘），再落可见性并重算抽屉链路
 +// 可见性只由当前宽度决定（不读不写存储）；668→667 跨越回抽屉默认，667→668 回内联显示
 +if (leftbarFullOnly()) document.documentElement.dataset.leftbarState = 'expanded';
++else if (leftbarRailOnly()) document.documentElement.dataset.leftbarState = 'collapsed';
 +applyLeftbarVisible(readLeftbarVisible(), false);
  document.addEventListener('pointerdown', function () {
    shellInputModality = 'pointer';
  });
-@@ -375,6 +472,17 @@ document.addEventListener('click', function (event) {
+@@ -375,6 +511,19 @@ document.addEventListener('click', function (event) {
    event.preventDefault();
    shellActions[action](trigger);
  });
-+// ≤667 抽屉展开时：点击左栏以外的任何区域都收起（只改可见性，form 不动）。
++// 左栏抽屉展开时：点击左栏以外的任何区域都收起（≤667 只改可见性；668–919 关掉浮层回窄条）。
 +// 捕获阶段处理，兼容正文里 stopPropagation 的组件；栏内点击、遮罩与开关按钮交给原有逻辑。
 +document.addEventListener('click', function (event) {
-+  if (!regionUsesDrawer('leftbar') || !leftbarIsVisible()) return;
++  const drawerScope = regionUsesDrawer('leftbar') ? leftbarIsVisible() : (leftbarRailOnly() && leftbarOverlayOpen());
++  if (!drawerScope) return;
 +  const target = event.target;
 +  if (!target?.closest) return;
 +  if (target.closest('#leftbar-region')) return;
 +  if (target.closest('.site-scrim')) return;
-+  if (target.closest('[data-shell-action="toggle-leftbar-drawer"], #mbb-menu-btn')) return;
-+      applyLeftbarVisible(false, false);
++  if (target.closest('[data-shell-action="toggle-leftbar-drawer"], [data-shell-action="toggle-leftbar"], #mbb-menu-btn')) return;
++  if (regionUsesDrawer('leftbar')) applyLeftbarVisible(false, false);
++  else dismissDrawer();
 +}, true);
  document.addEventListener('keydown', function (event) {
    shellInputModality = 'keyboard';
    if (event.key === 'Escape') {
-@@ -394,15 +502,40 @@ searchDialog?.addEventListener('change', function (event) {
+@@ -394,15 +543,49 @@ searchDialog?.addEventListener('change', function (event) {
    if (event.target?.name !== 'site-search-scope') return;
    applySearchScope(searchDialog, event.target.value);
  });
@@ -281,10 +315,19 @@ diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/he
 -      dismissDrawer({ restoreFocus: false });
 -      syncDrawerControls();
 +      if (media === leftbarFullOnlyMQL) {
-+        // 进入 ≥1025 强制完整、离开时回到存储形态；两个方向都不写存储
-+        setLeftbarState(media.matches ? 'expanded' : storedLeftbarState(), false);
++        // 进入 ≥1025 强制完整；离开时若是 668–919 则归一到固定窄条，其余回到存储形态。
++        // 两个方向都不写存储（离开 1025 时 919/920 边界可能同时触发，这里自己判宽度，避免顺序依赖）
++        if (media.matches) setLeftbarState('expanded', false);
++        else setLeftbarState(leftbarRailOnly() ? 'collapsed' : storedLeftbarState(), false);
 +      } else if (media === leftbarRailOnlyMQL) {
-+        // 668/919 边界只影响按钮语义与 inert，形态与存储都不动
++        // 668–919 只有 64 窄条：进入即归一到 collapsed（关掉浮层、不落盘），
++        // 离开时恢复存储形态（≥1025 仍由上面的分支接管）
++        if (media.matches) {
++          if (siteShell?.dataset.drawer === 'leftbar') delete siteShell.dataset.drawer;
++          setLeftbarState('collapsed', false);
++        } else {
++          setLeftbarState(leftbarFullOnly() ? 'expanded' : storedLeftbarState(), false);
++        }
 +        syncDrawerControls();
 +        syncLeftbarControls();
 +      } else if (media === rightbarDrawerMQL && !media.matches) {
@@ -299,7 +342,7 @@ diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/he
      };
      if (typeof media.addEventListener === 'function') media.addEventListener('change', handleChange);
      else if (typeof media.addListener === 'function') media.addListener(handleChange);
-@@ -1018,3 +1151,16 @@ init.wikiStart();
+@@ -1018,3 +1201,16 @@ init.wikiStart();
  init.wikiCover();
  init.leftbarScroll();
  init.canonicalCheck();

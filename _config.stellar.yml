@@ -196,11 +196,12 @@ inject:
       (function() {
         var root = document.documentElement;
         var LEFTBAR_KEY = 'stellar:v2:leftbar-state';
-        // 左栏梯次唯一来源：≤667 抽屉（移动顶栏菜单开合）；668–919 只有 64 窄条
-        // （expanded 表示整条隐藏）；920–1024 完整/窄条可切换；≥1025 永远完整。
+        // 左栏梯次唯一来源：≤667 抽屉（移动顶栏菜单开合）；668–919 收起态固定 64 窄条
+        // 常驻、展开走抽屉浮层；920–1024 完整/窄条可切换；≥1025 永远完整。
         // 断点须与 CSS 的 667/668、919/920、1024/1025 及补丁里同为 667 的
-        // leftbarDrawerQuery/leftbarHiddenQuery 一致。
+        // leftbarDrawerQuery/leftbarHiddenQuery、668/919 的 leftbarRailOnlyQuery 一致。
         var LEFTBAR_DRAWER_MAX = 667;
+        var LEFTBAR_RAIL_MAX = 919;
         var LEFTBAR_FULL_MIN = 1025;
         try {
           var s = localStorage.getItem(LEFTBAR_KEY);
@@ -210,6 +211,8 @@ inject:
         }
         // ≥1025 无条件完整形态：忽略存储的 collapsed，只改首帧渲染，不写存储
         if (window.innerWidth >= LEFTBAR_FULL_MIN) root.dataset.leftbarState = 'expanded';
+        // 668–919 收起态固定 64 窄条：同样只改首帧渲染、不写存储（完整内容由抽屉浮层呈现）
+        if (window.innerWidth > LEFTBAR_DRAWER_MAX && window.innerWidth <= LEFTBAR_RAIL_MAX) root.dataset.leftbarState = 'collapsed';
         // 可见性与形态分开存：没有偏好时 ≥668 默认显示（内联，可收窄条），≤667 默认隐藏
         // （抽屉；LEFTBAR_DRAWER_MAX 仅作抽屉区间锚点，供 breakpoints.js 校验）
         var leftbarVisible = window.innerWidth > LEFTBAR_DRAWER_MAX ? 'shown' : 'hidden';
@@ -323,15 +326,16 @@ inject:
 
         syncPageChrome();
 
-        // 移动端菜单按钮：≤667 复用抽屉显隐；668–919 由它统一切换 64 窄条 / 隐藏
+        // 移动端菜单按钮：≤667 复用抽屉显隐；668–919 开合 64 窄条上的抽屉浮层
         if (menuBtn) {
           var syncMenu = function() {
             var root = document.documentElement;
+            var shell = document.querySelector('.site-shell');
             var shown;
             if (window.innerWidth <= 667) {
               shown = root.getAttribute('data-leftbar-visible') === 'shown';
             } else if (window.innerWidth <= 919) {
-              shown = root.getAttribute('data-leftbar-state') === 'collapsed';
+              shown = !!(shell && shell.getAttribute('data-drawer') === 'leftbar');
             } else {
               shown = true;
             }
@@ -344,10 +348,15 @@ inject:
             syncMenu();
           });
           if ('MutationObserver' in window) {
-            new MutationObserver(syncMenu).observe(document.documentElement, {
+            var menuObserver = new MutationObserver(syncMenu);
+            menuObserver.observe(document.documentElement, {
               attributes: true,
               attributeFilter: ['data-leftbar-visible', 'data-leftbar-state']
             });
+            var menuShell = document.querySelector('.site-shell');
+            if (menuShell) {
+              menuObserver.observe(menuShell, { attributes: true, attributeFilter: ['data-drawer'] });
+            }
           }
           window.addEventListener('resize', syncMenu);
           syncMenu();
