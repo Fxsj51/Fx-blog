@@ -1,11 +1,11 @@
 'use strict';
 /* 左栏形态回归（按宽度分段 + 段内可切换）：
  *   ≤667  抽屉，默认隐藏，移动顶栏菜单开合（不变）
- *   668–919  收起态固定 64 窄条常驻（主栏只让出 64）；展开走抽屉浮层（340 + 遮罩，点外收起）
- *   920–1024 完整 340 / 64 窄条可切换，形态按 stellar:v2:leftbar-state 记忆
- *   ≥1025 永远完整 340，收纳按钮隐藏；忽略存储的 collapsed、不写存储
+ *   668–919  收起态固定 64 窄条常驻（主栏只让出 64、窄条不可滚动）；展开走抽屉浮层（340 + 遮罩，点外收起）
+ *   920 及以上 完整 340 / 64 窄条可切换，形态按 stellar:v2:leftbar-state 记忆
+ *   （含 ≥1181 三栏：左栏 340 ⇄ 64，右栏 380 占位不变）
  * 断点依据：完整 340 + 主栏 ≥560（含 17px 滚动条）→ 视口 ≥917，取整 920；
- * 668/667 与 nightfall7 的抽屉边界一致；1025 为常见 1024/1025 桌面分界（full 下主栏 ≥668）。
+ * 668/667 与 nightfall7 的抽屉边界一致；1025/1181/1440 为宽屏抽样（≥920 同规则）。
  * 覆盖：667/668/900/919/920/1024/1025/1181/1440。
  */
 const { spawn } = require('child_process');
@@ -51,6 +51,25 @@ const record = (name, ok, detail) => { results.push({ name, ok, detail }); conso
   const send = (method, params = {}) => new Promise((r, j) => { const i = ++id; m.set(i, { r, j }); ws.send(JSON.stringify({ id: i, method, params })); });
   const ev = async (x) => (await send('Runtime.evaluate', { expression: x, returnByValue: true, awaitPromise: true })).result.value;
 
+  // 用真实滚轮 + 触摸拖动去滚窄条，返回窄条视口的 scrollTop（不可滚动时应恒为 0）
+  const railUserScrollTop = async () => {
+    const p = await ev(probe);
+    if (!p.vpRect) return null;
+    const x = Math.round(p.vpRect.x + p.vpRect.w / 2);
+    const y = Math.round(p.vpRect.y + Math.min(40, p.vpRect.h / 2));
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x, y: y, button: 'none' });
+    await send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: x, y: y, deltaX: 0, deltaY: 320 });
+    await sleep(250);
+    try {
+      await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x, y: y }] });
+      await send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x, y: y - 120 }] });
+      await send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x, y: y - 240 }] });
+      await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    } catch (error) {}
+    await sleep(350);
+    return (await ev(probe)).vpScrollTop;
+  };
+
   await send('Page.enable'); await send('Runtime.enable');
 
   const probe = `(() => {
@@ -68,6 +87,8 @@ const record = (name, ok, detail) => { results.push({ name, ok, detail }); conso
     const br = bar ? bar.getBoundingClientRect() : null;
     const mbb = document.getElementById('mbb-menu-btn');
     const shell = document.querySelector('.site-shell');
+    const rb = document.getElementById('rightbar-region');
+    const rbr = rb ? rb.getBoundingClientRect() : null;
     return {
       vw: window.innerWidth,
       attr: root.getAttribute('data-leftbar-visible'),
@@ -81,12 +102,18 @@ const record = (name, ok, detail) => { results.push({ name, ok, detail }); conso
       mainW: mr ? Math.round(mr.width) : null,
       mainX: mr ? Math.round(mr.left) : null,
       mainY: mr ? Math.round(mr.top) : null,
+      rbW: rbr ? Math.round(rbr.width) : null,
       barH: br ? Math.round(br.height) : null,
       mbbExpanded: mbb ? mbb.getAttribute('aria-expanded') : null,
       dock: shown(dock) && shown(dockBtn),
       toggle: shown(toggle),
       toggleDisplay: toggle ? getComputedStyle(toggle).display : null,
       toggleLabel: toggle ? toggle.getAttribute('aria-label') : null,
+      vpOverflow: (() => { const v = document.querySelector('#leftbar-region .site-region__viewport'); return v ? getComputedStyle(v).overflowY : null; })(),
+      vpScrollTop: (() => { const v = document.querySelector('#leftbar-region .site-region__viewport'); return v ? Math.round(v.scrollTop) : null; })(),
+      vpScrollH: (() => { const v = document.querySelector('#leftbar-region .site-region__viewport'); return v ? v.scrollHeight : null; })(),
+      vpClientH: (() => { const v = document.querySelector('#leftbar-region .site-region__viewport'); return v ? v.clientHeight : null; })(),
+      vpRect: (() => { const v = document.querySelector('#leftbar-region .site-region__viewport'); if (!v) return null; const b = v.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) }; })(),
       mobileBar: bar ? getComputedStyle(bar).display !== 'none' : false,
       scrim: scrim ? getComputedStyle(scrim).opacity : null,
       grid: (() => { const g = document.querySelector('.site-workspace'); return g ? getComputedStyle(g).gridTemplateColumns : null; })(),
@@ -143,6 +170,10 @@ const record = (name, ok, detail) => { results.push({ name, ok, detail }); conso
       t.drawer === '' && t.mbbExpanded === 'false' && t.mainW >= 560 && t.mainY >= t.barH && t.overflow === 0,
       { form: t.form, lbW: t.lbW, lbX: t.lbX, drawer: t.drawer, bar: t.mobileBar, dock: t.dock, mbb: t.mbbExpanded, mainW: t.mainW, mainY: t.mainY, barH: t.barH, overflow: t.overflow });
     const baseMainW = t.mainW;
+    const railScrollTop = await railUserScrollTop();
+    record('B' + w + 'f: 64 窄条不可滚动（滚轮/触摸后 scrollTop=0、overflow hidden）',
+      t.vpOverflow === 'hidden' && railScrollTop === 0,
+      { overflowY: t.vpOverflow, scrollTop: railScrollTop, scrollH: t.vpScrollH, clientH: t.vpClientH });
     await click('#mbb-menu-btn');
     t = await ev(probe);
     record('B' + w + 'b: 顶栏菜单打开抽屉浮层 340 + 遮罩，主栏不被挤窄、存储未被改写',
@@ -186,45 +217,85 @@ const record = (name, ok, detail) => { results.push({ name, ok, detail }); conso
     await click('.leftbar-state-toggle');
   }
 
-  /* ---------- D. ≥1025 永远完整：忽略存储 collapsed、不写存储 ---------- */
+  /* ---------- D. ≥1025 恢复完整/窄条切换并记忆（1025 单列） ---------- */
   await setWidth(1025);
-  await ev(clearState);
-  await ev(`try { localStorage.setItem('stellar:v2:leftbar-state','collapsed'); } catch (e) {}`);
-  await reload();
+  await ev(clearState); await reload();
   let d = await ev(probe);
-  record('D1: 1025 存储 collapsed 仍完整 340、按钮隐藏、存储未被改写',
-    d.form === 'full' && d.lbW === 340 && d.toggleDisplay === 'none' && d.storedForm === 'collapsed',
-    { form: d.form, lbW: d.lbW, toggle: d.toggleDisplay, stored: d.storedForm });
-  await setWidth(1024);
+  record('D1: 1025 默认完整 340、收纳按钮在、主栏 ≥560',
+    d.form === 'full' && d.lbW === 340 && d.toggleDisplay !== 'none' && d.dock === false && d.mainW >= 560 && d.overflow === 0,
+    { form: d.form, lbW: d.lbW, toggle: d.toggleDisplay, mainW: d.mainW, overflow: d.overflow });
+  await click('.leftbar-state-toggle');
   d = await ev(probe);
-  record('D2: 1025→1024 回到存储的窄条 64', d.form === 'rail' && d.lbW === 64 && d.storedForm === 'collapsed', { form: d.form, lbW: d.lbW, stored: d.storedForm });
-  await setWidth(1025);
+  record('D2: 1025 收纳为 64 并落盘、主栏变宽',
+    d.form === 'rail' && d.lbW === 64 && d.storedForm === 'collapsed' && d.mainW > 560,
+    { form: d.form, lbW: d.lbW, stored: d.storedForm, mainW: d.mainW });
+  await reload();
   d = await ev(probe);
-  record('D3: 1024→1025 再次强制完整、存储仍 collapsed', d.form === 'full' && d.lbW === 340 && d.storedForm === 'collapsed', { form: d.form, lbW: d.lbW, stored: d.storedForm });
+  record('D3: 1025 刷新后仍是 64（形态记忆）', d.form === 'rail' && d.lbW === 64, { form: d.form, lbW: d.lbW });
+  await click('.leftbar-state-toggle');
+  d = await ev(probe);
+  record('D4: 1025 再展开回 340 且存储为 expanded',
+    d.form === 'full' && d.lbW === 340 && d.storedForm === 'expanded', { form: d.form, lbW: d.lbW, stored: d.storedForm });
   await ev(clearState);
 
-  /* ---------- E. 1181 / 1440 与 ≥1181 自动显示 ---------- */
+  /* ---------- E. 1181 / 1440：三栏下也可切窄条，右栏占位不变 ---------- */
   await setWidth(1440);
   await ev(clearState); await reload();
   let e = await ev(probe);
-  record('E1: 1440 完整 340、收纳按钮隐藏、无横向溢出',
-    e.form === 'full' && e.lbW === 340 && e.toggleDisplay === 'none' && e.overflow === 0,
+  record('E1: 1440 完整 340、收纳按钮在、无横向溢出',
+    e.form === 'full' && e.lbW === 340 && e.toggleDisplay !== 'none' && e.overflow === 0,
     { form: e.form, lbW: e.lbW, toggle: e.toggleDisplay, overflow: e.overflow });
   await setWidth(1181);
   e = await ev(probe);
-  record('E2: 1181 三栏下左栏仍 340、无横向溢出', e.lbW === 340 && e.overflow === 0, { lbW: e.lbW, overflow: e.overflow, grid: e.grid });
+  record('E2: 1181 三栏默认 340、收纳按钮在、无横向溢出',
+    e.lbW === 340 && e.toggleDisplay !== 'none' && e.rbW === 380 && e.overflow === 0,
+    { lbW: e.lbW, rbW: e.rbW, toggle: e.toggleDisplay, overflow: e.overflow, grid: e.grid });
+  await click('.leftbar-state-toggle');
+  e = await ev(probe);
+  record('E3: 1181 收纳为 64：右栏仍 380、主栏变宽、存储 collapsed',
+    e.form === 'rail' && e.lbW === 64 && e.rbW === 380 && e.mainW > 453 && e.storedForm === 'collapsed',
+    { form: e.form, lbW: e.lbW, rbW: e.rbW, mainW: e.mainW, stored: e.storedForm, grid: e.grid });
+  await reload();
+  e = await ev(probe);
+  record('E4: 1181 刷新后仍是 64（形态记忆）', e.form === 'rail' && e.lbW === 64 && e.rbW === 380, { form: e.form, lbW: e.lbW, rbW: e.rbW });
+  await click('.leftbar-state-toggle');
+  e = await ev(probe);
+  record('E5: 1181 再展开回 340', e.form === 'full' && e.lbW === 340 && e.rbW === 380, { form: e.form, lbW: e.lbW, rbW: e.rbW });
+  await ev(clearState);
+
+  /* ---------- E6–E8. ≥1181 自动显示兜底 ---------- */
   await setWidth(1000);
   await ev(`document.documentElement.setAttribute('data-leftbar-visible','hidden')`);
   await setWidth(1441);
   await sleep(600);
   e = await ev(probe);
-  record('E3: 1000 手动隐藏态跨入 1441 自动出现', e.attr === 'shown' && e.lbW === 340, { attr: e.attr, lbW: e.lbW });
+  record('E6: 1000 手动隐藏态跨入 1441 自动出现', e.attr === 'shown' && e.lbW === 340, { attr: e.attr, lbW: e.lbW });
   await setWidth(1441);
   await ev(`try { localStorage.setItem('stellar:v2:leftbar-visible','hidden'); } catch (e) {}`);
   await reload();
   e = await ev(probe);
-  record('E4: 遗留 hidden 存储以 1441 打开即出现且存储不变',
-    e.attr === 'shown' && e.lbW === 340 && e.storedVisible === 'hidden', { attr: e.attr, stored: e.storedVisible });
+  record('E7: 遗留 hidden 存储以 1441 打开即出现且存储不变',
+    e.attr === 'shown' && e.lbW === 340 && e.storedVisible === 'hidden', { attr: e.attr, lbW: e.lbW, stored: e.storedVisible });
+  await ev(clearState);
+
+  /* ---------- G. 各档 64 窄条都不可滚动，完整形态不受影响 ---------- */
+  for (const w of [920, 1024, 1025, 1181, 1440]) {
+    await setWidth(w);
+    await ev(clearState); await reload();
+    await click('.leftbar-state-toggle');
+    await sleep(600);
+    let g = await ev(probe);
+    const st = await railUserScrollTop();
+    record('G' + w + 'a: 窄条不可滚动（滚轮/触摸后 scrollTop=0、overflow hidden）',
+      g.form === 'rail' && g.lbW === 64 && g.vpOverflow === 'hidden' && st === 0,
+      { form: g.form, lbW: g.lbW, overflowY: g.vpOverflow, scrollTop: st, scrollH: g.vpScrollH, clientH: g.vpClientH });
+    await click('.leftbar-state-toggle');
+    await sleep(600);
+    g = await ev(probe);
+    record('G' + w + 'b: 完整形态仍可滚动（overflow 未隐藏）',
+      g.form === 'full' && g.lbW === 340 && g.vpOverflow !== 'hidden',
+      { form: g.form, lbW: g.lbW, overflowY: g.vpOverflow, scrollH: g.vpScrollH, clientH: g.vpClientH });
+  }
   await ev(clearState);
 
   /* ---------- F. 九档扫描：形态/主栏/溢出 ---------- */
@@ -241,18 +312,18 @@ const record = (name, ok, detail) => { results.push({ name, ok, detail }); conso
     if (x.w === 667) return x.attr !== 'hidden' || x.lbX >= 0 || x.mobileBar !== true;
     if (x.w <= 919) return x.form !== 'rail' || x.lbW !== 64 || x.lbX < 0 || x.drawer !== '' ||
       x.mobileBar !== true || x.dock === true || x.mainW < 560 || x.mainY < x.barH;
-    if (x.w <= 1024) return x.lbW !== 340 || x.mainW < 560 || x.mobileBar === true;
-    return x.lbW !== 340 || x.mobileBar === true;
+    if (x.w <= 1024) return x.lbW !== 340 || x.mainW < 560 || x.mobileBar === true || x.toggle === 'none';
+    return x.lbW !== 340 || x.mobileBar === true || x.toggle === 'none';
   });
-  record('F1: 九档形态符合分段（668–919 常驻 64 窄条）、668–1024 主栏 ≥560、顶栏只在 ≤919', bad.length === 0, { sweep: sweep, bad: bad });
+  record('F1: 九档形态符合分段（668–919 常驻 64 窄条；≥920 默认完整且可收纳）、668–1024 主栏 ≥560、顶栏只在 ≤919', bad.length === 0, { sweep: sweep, bad: bad });
   const at1181 = sweep.find((x) => x.w === 1181);
   record('F4: 1181 三栏主栏 <560（右栏 1180/1181 固定断点导致的已知例外，未改右栏）',
     at1181.mainW < 560 && at1181.lbW === 340, { mainW: at1181.mainW });
   record('F2: 九档无横向溢出', sweep.every((x) => x.overflow <= 0), { overflow: sweep.map((x) => x.w + ':' + x.overflow) });
-  const toggleHidden = sweep.filter((x) => x.w >= 1025).every((x) => x.toggle === 'none');
-  const toggleShown = sweep.filter((x) => x.w >= 920 && x.w <= 1024).every((x) => x.toggle !== 'none');
-  record('F3: ≥1025 收纳按钮隐藏、920–1024 可见', toggleHidden && toggleShown,
-    { hidden: sweep.filter((x) => x.w >= 1025).map((x) => x.w + ':' + x.toggle), shown: sweep.filter((x) => x.w >= 920 && x.w <= 1024).map((x) => x.w + ':' + x.toggle) });
+  const toggleAll = sweep.filter((x) => x.w >= 920).every((x) => x.toggle !== 'none');
+  const toggleRailOnly = sweep.filter((x) => x.w <= 919).every((x) => x.toggle !== 'none');
+  record('F3: ≥920 收纳按钮全部可见（含 ≥1025 / 1181）、668–919 窄条按钮在', toggleAll && toggleRailOnly,
+    { toggle: sweep.map((x) => x.w + ':' + x.toggle) });
 
   record('全程无 JS 异常', errs.length === 0, { errs: errs.slice(0, 3) });
 

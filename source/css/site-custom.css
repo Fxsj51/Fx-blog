@@ -3,15 +3,15 @@
  * 原先内联在 _config.stellar.yml 的 inject.head_end 里，随每个页面重复下发；
  * 拆成独立文件后全站共享一份缓存，且由 tools/minify.js 统一压缩。
  * 注意：
- *  - 媒体查询断点必须保持 1180/1181（右栏抽屉/常驻）、667/668 与 919/920、
- *    1024/1025（左栏梯次）、900（背景图），scripts/breakpoints.js 会构建期校验；
+ *  - 媒体查询断点必须保持 1180/1181（右栏抽屉/常驻）、667/668 与 919/920
+ *    （左栏梯次，≥920 完整/窄条皆可切换）、900（背景图），scripts/breakpoints.js 会构建期校验；
  *  - 图片路径用根绝对 /images/：hexo server（root=/）直接可用，
  *    GitHub Pages 子路径部署由 tools/minify.js 的 fixLocalPaths 统一补前缀。
  */
   /*
-   * 断点同源：本段媒体查询里的 1180/1181（右栏）、667/668、919/920、1024/1025（左栏）
+   * 断点同源：本段媒体查询里的 1180/1181（右栏）、667/668、919/920（左栏）
    * 与 body_end 注入脚本的 RIGHTBAR_DRAWER_MAX、head_end 注入脚本的
-   * LEFTBAR_DRAWER_MAX/LEFTBAR_FULL_MIN、patches/hexo-theme-stellar+2.0.0.patch 里的
+   * LEFTBAR_DRAWER_MAX/LEFTBAR_RAIL_MAX、patches/hexo-theme-stellar+2.0.0.patch 里的
    * rightbarDrawerQuery / leftbar*Query 必须一致。改动任意一处都会让
    * scripts/breakpoints.js 的构建期校验失败。
    */
@@ -419,6 +419,26 @@
     align-items: center !important;
   }
 
+  /*
+   * 64 窄条态（668–919 / 920–1024 / ≥1025 / ≥1181 共用）：
+   * 内容不可滚动——不产生滚动条，滚轮与触摸拖动都不生效，溢出直接裁掉。
+   * 完整形态（data-leftbar-state=expanded）与 ≤667 抽屉浮层不受影响。
+   */
+  html[data-leftbar-state="collapsed"] .site-shell:not([data-drawer='leftbar']) #leftbar-region,
+  html[data-leftbar-state="collapsed"] .site-shell:not([data-drawer='leftbar']) #leftbar-region .site-region__viewport,
+  html[data-leftbar-state="collapsed"] .site-shell:not([data-drawer='leftbar']) #leftbar-region .widget-stack--leftbar {
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  html[data-leftbar-state="collapsed"] .site-shell:not([data-drawer='leftbar']) #leftbar-region .site-region__viewport::-webkit-scrollbar,
+  html[data-leftbar-state="collapsed"] .site-shell:not([data-drawer='leftbar']) #leftbar-region .widget-stack--leftbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
   aside#rightbar-region {
     grid-column: 3 !important;
     width: 380px !important;
@@ -719,13 +739,6 @@
       right: auto !important;
       top: auto !important;
       bottom: auto !important;
-    }
-  }
-
-  /* ≥1025：永远完整 340。形态由首帧脚本与 JS 归一到 expanded（不写存储），收纳按钮无意义 */
-  @media screen and (min-width: 1025px) {
-    [data-shell-action="toggle-leftbar"] {
-      display: none !important;
     }
   }
 
