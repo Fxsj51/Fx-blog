@@ -323,11 +323,19 @@ inject:
 
         syncPageChrome();
 
-        // 移动端菜单按钮：复用主题的左栏显隐开关（形态由左栏内的收纳按钮单独控制）
+        // 移动端菜单按钮：≤667 复用抽屉显隐；668–919 由它统一切换 64 窄条 / 隐藏
         if (menuBtn) {
           var syncMenu = function() {
-            menuBtn.setAttribute('aria-expanded',
-              document.documentElement.getAttribute('data-leftbar-visible') === 'shown' ? 'true' : 'false');
+            var root = document.documentElement;
+            var shown;
+            if (window.innerWidth <= 667) {
+              shown = root.getAttribute('data-leftbar-visible') === 'shown';
+            } else if (window.innerWidth <= 919) {
+              shown = root.getAttribute('data-leftbar-state') === 'collapsed';
+            } else {
+              shown = true;
+            }
+            menuBtn.setAttribute('aria-expanded', shown ? 'true' : 'false');
           };
           menuBtn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -338,9 +346,10 @@ inject:
           if ('MutationObserver' in window) {
             new MutationObserver(syncMenu).observe(document.documentElement, {
               attributes: true,
-              attributeFilter: ['data-leftbar-visible']
+              attributeFilter: ['data-leftbar-visible', 'data-leftbar-state']
             });
           }
+          window.addEventListener('resize', syncMenu);
           syncMenu();
         }
       });

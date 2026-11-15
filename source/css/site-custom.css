@@ -675,7 +675,7 @@
   /*
    * 668–919：只有 64px 窄条，完整形态在本段不存在。
    * form=expanded 视为「隐藏」：整条移出布局、首列归零；668–768 的主题 reserve 同时归零。
-   * 隐藏态的唯一恢复入口是左上角浮出的主题 dock 左栏按钮（不占布局，避开右下角播放器）。
+   * 本段常驻移动顶栏，左栏隐藏/展开统一由顶栏菜单按钮负责，不再保留任何浮层入口。
    */
   @media screen and (min-width: 668px) and (max-width: 919px) {
     html[data-leftbar-state="expanded"] .site-workspace {
@@ -691,33 +691,10 @@
     html[data-leftbar-state="expanded"] .site-region--leftbar {
       display: none !important;
     }
-    html[data-leftbar-state="expanded"] .site-shell[data-regions~='leftbar'] .site-dock {
-      display: flex !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      pointer-events: auto !important;
-      position: fixed !important;
-      inset-inline-start: 16px !important;
-      inset-inline-end: auto !important;
-      top: 76px !important;
-      bottom: auto !important;
-      width: auto !important;
-      height: auto !important;
-      overflow: visible !important;
-      z-index: var(--z-drawer-btn) !important;
-    }
-    html[data-leftbar-state="expanded"] .site-shell[data-regions~='leftbar'] .site-dock__button--leftbar {
-      display: flex !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      pointer-events: auto !important;
-      position: static !important;
-      width: 40px !important;
-      height: 40px !important;
-    }
-    html[data-leftbar-state="expanded"] .site-shell[data-regions~='leftbar'] .site-dock__button:not(.site-dock__button--leftbar) {
-      display: none !important;
-    }
+    /* 移动顶栏在本段常驻；顶栏是 fixed，工作区让出高度，左栏 sticky 停在顶栏下方 */
+    #mobile-brand-bar { display: flex !important; }
+    .site-workspace { padding-top: 80px; }
+    .site-region--leftbar { top: 80px; }
   }
 
   /* ≥1025：永远完整 340。形态由首帧脚本与 JS 归一到 expanded（不写存储），收纳按钮无意义 */

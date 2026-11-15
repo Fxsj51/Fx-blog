@@ -80,6 +80,10 @@ function check() {
   if (!config.match(/window\.innerWidth >= LEFTBAR_FULL_MIN/)) {
     errors.push('head_end 注入脚本里找不到 `window.innerWidth >= LEFTBAR_FULL_MIN`（≥1025 强制完整形态）');
   }
+  // 移动顶栏在 668–919 常驻，菜单按钮的 aria 也按该段形态推导
+  if (!config.match(/window\.innerWidth <= 919/)) {
+    errors.push(`body_end 注入脚本里找不到 \`window.innerWidth <= 919\`（668–${LEFTBAR_RAIL_MAX} 顶栏菜单口径）`);
+  }
 
   // 2. 媒体查询字面量：按「出现次数」比对，避免只改其中一处时漏检
   //    （注释里的同源说明不计入；新增/删除断点媒体查询后请同步这里的期望计数）

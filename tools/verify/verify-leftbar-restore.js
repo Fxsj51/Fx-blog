@@ -65,6 +65,8 @@ const record = (name, ok, detail) => { results.push({ name, ok, detail }); conso
     const shown = (el) => !!el && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden' && el.getBoundingClientRect().width > 0;
     const bar = document.getElementById('mobile-brand-bar');
     const scrim = document.querySelector('.site-scrim');
+    const br = bar ? bar.getBoundingClientRect() : null;
+    const mbb = document.getElementById('mbb-menu-btn');
     return {
       vw: window.innerWidth,
       attr: root.getAttribute('data-leftbar-visible'),
@@ -76,6 +78,9 @@ const record = (name, ok, detail) => { results.push({ name, ok, detail }); conso
       lbX: lr ? Math.round(lr.left) : null,
       mainW: mr ? Math.round(mr.width) : null,
       mainX: mr ? Math.round(mr.left) : null,
+      mainY: mr ? Math.round(mr.top) : null,
+      barH: br ? Math.round(br.height) : null,
+      mbbExpanded: mbb ? mbb.getAttribute('aria-expanded') : null,
       dock: shown(dock) && shown(dockBtn),
       toggle: shown(toggle),
       toggleDisplay: toggle ? getComputedStyle(toggle).display : null,
@@ -126,22 +131,25 @@ const record = (name, ok, detail) => { results.push({ name, ok, detail }); conso
   record('A5: 667 rail 形态打开为 64 窄条且无遮罩', s.form === 'rail' && s.lbW === 64 && s.scrim === '0', s);
   await ev(clearState);
 
-  /* ---------- B. 668–919 仅窄条；expanded=隐藏，dock 恢复 ---------- */
+  /* ---------- B. 668–919 仅窄条；expanded=隐藏，顶栏菜单统一切换 ---------- */
   for (const w of [668, 900, 919]) {
     await setWidth(w);
     await ev(clearState); await reload();
     let t = await ev(probe);
-    record('B' + w + 'a: expanded 即整条隐藏、不占位、dock 出现、主栏 ≥560',
-      t.form === 'full' && t.lbDisplay === 'none' && t.dock === true && t.mainW >= 560 && t.overflow === 0,
-      { form: t.form, display: t.lbDisplay, dock: t.dock, mainW: t.mainW, overflow: t.overflow });
-    await click('.site-dock__button--leftbar');
+    record('B' + w + 'a: expanded 即整条隐藏、顶栏在、无浮层入口、主栏 ≥560',
+      t.form === 'full' && t.lbDisplay === 'none' && t.mobileBar === true && t.dock === false &&
+      t.mainW >= 560 && t.mainY >= t.barH && t.overflow === 0,
+      { form: t.form, display: t.lbDisplay, bar: t.mobileBar, dock: t.dock, mainW: t.mainW, mainY: t.mainY, barH: t.barH, overflow: t.overflow });
+    await click('#mbb-menu-btn');
     t = await ev(probe);
-    record('B' + w + 'b: dock 点一下回到 64 窄条（dock 隐去、主栏 ≥560）',
-      t.form === 'rail' && t.lbW === 64 && t.lbDisplay !== 'none' && t.dock === false && t.toggleLabel === 'Hide leftbar' && t.mainW >= 560 && t.overflow === 0,
-      { form: t.form, lbW: t.lbW, dock: t.dock, label: t.toggleLabel, mainW: t.mainW, overflow: t.overflow });
-    await click('.leftbar-state-toggle');
+    record('B' + w + 'b: 顶栏菜单点一下回到 64 窄条（顶栏仍在、无浮层入口、主栏 ≥560）',
+      t.form === 'rail' && t.lbW === 64 && t.lbDisplay !== 'none' && t.mobileBar === true &&
+      t.dock === false && t.mbbExpanded === 'true' && t.mainW >= 560 && t.overflow === 0,
+      { form: t.form, lbW: t.lbW, bar: t.mobileBar, dock: t.dock, mbb: t.mbbExpanded, mainW: t.mainW, overflow: t.overflow });
+    await click('#mbb-menu-btn');
     t = await ev(probe);
-    record('B' + w + 'c: 栏内按钮隐藏窄条（expanded）', t.form === 'full' && t.lbDisplay === 'none' && t.dock === true, { form: t.form, display: t.lbDisplay, dock: t.dock });
+    record('B' + w + 'c: 再点隐藏窄条且无浮层入口', t.form === 'full' && t.lbDisplay === 'none' && t.mbbExpanded === 'false' && t.dock === false,
+      { form: t.form, display: t.lbDisplay, mbb: t.mbbExpanded, dock: t.dock });
   }
 
   /* ---------- C. 920–1024 完整/窄条可切换且记忆 ---------- */
@@ -210,15 +218,15 @@ const record = (name, ok, detail) => { results.push({ name, ok, detail }); conso
     await setWidth(w, w <= 667);
     await ev(clearState); await reload();
     const t = await ev(probe);
-    sweep.push({ w: w, attr: t.attr, form: t.form, shown: t.lbDisplay !== 'none' && (t.lbW || 0) > 0, lbW: t.lbW, lbX: t.lbX, lbDisplay: t.lbDisplay, mainW: t.mainW, dock: t.dock, mobileBar: t.mobileBar, overflow: t.overflow, toggle: t.toggleDisplay });
+    sweep.push({ w: w, attr: t.attr, form: t.form, shown: t.lbDisplay !== 'none' && (t.lbW || 0) > 0, lbW: t.lbW, lbX: t.lbX, lbDisplay: t.lbDisplay, mainW: t.mainW, mainY: t.mainY, barH: t.barH, dock: t.dock, mobileBar: t.mobileBar, overflow: t.overflow, toggle: t.toggleDisplay });
   }
   const bad = sweep.filter((x) => {
     if (x.w === 667) return x.attr !== 'hidden' || x.lbX >= 0 || x.mobileBar !== true;
-    if (x.w <= 919) return x.lbDisplay !== 'none' || x.dock !== true || x.mainW < 560;
-    if (x.w <= 1024) return x.lbW !== 340 || x.mainW < 560;
-    return x.lbW !== 340;
+    if (x.w <= 919) return x.lbDisplay !== 'none' || x.mobileBar !== true || x.dock === true || x.mainW < 560 || x.mainY < x.barH;
+    if (x.w <= 1024) return x.lbW !== 340 || x.mainW < 560 || x.mobileBar === true;
+    return x.lbW !== 340 || x.mobileBar === true;
   });
-  record('F1: 九档形态符合分段且 668–1024 主栏 ≥560', bad.length === 0, { sweep: sweep, bad: bad });
+  record('F1: 九档形态符合分段、668–1024 主栏 ≥560、顶栏只在 ≤919', bad.length === 0, { sweep: sweep, bad: bad });
   const at1181 = sweep.find((x) => x.w === 1181);
   record('F4: 1181 三栏主栏 <560（右栏 1180/1181 固定断点导致的已知例外，未改右栏）',
     at1181.mainW < 560 && at1181.lbW === 340, { mainW: at1181.mainW });
