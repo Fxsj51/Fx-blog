@@ -12,10 +12,9 @@ index 8938ea7..0649f02 100644
        el += partial('breadcrumb/wiki', {viewModel: wikiViewModel})
      } else if (notebookViewModel) {
 diff --git a/node_modules/hexo-theme-stellar/source/js/main.js b/node_modules/hexo-theme-stellar/source/js/main.js
-index 28ff615..2003f88 100644
 --- a/node_modules/hexo-theme-stellar/source/js/main.js
 +++ b/node_modules/hexo-theme-stellar/source/js/main.js
-@@ -97,8 +97,9 @@ const hud = {
+@@ -97,8 +97,11 @@ const hud = {
  
  const siteShell = document.querySelector('.site-shell');
  const leftbarStateKey = 'stellar:v2:leftbar-state';
@@ -24,13 +23,32 @@ index 28ff615..2003f88 100644
 +const leftbarVisibleKey = 'stellar:v2:leftbar-visible';
 +const leftbarDrawerQuery = '(max-width: 667px)';
 +const leftbarHiddenQuery = '(max-width: 667px)';
++const leftbarRailOnlyQuery = '(min-width: 668px) and (max-width: 919px)';
++const leftbarFullOnlyQuery = '(min-width: 1025px)';
  const rightbarDrawerQuery = '(max-width: 1180px)';
  let shellDrawerTrigger = null;
  let searchDialogTrigger = null;
-@@ -118,9 +119,38 @@ function regionUsesDrawer(region) {
+@@ -118,9 +121,61 @@ function regionUsesDrawer(region) {
    return window.matchMedia(region === 'leftbar' ? leftbarDrawerQuery : rightbarDrawerQuery).matches;
  }
  
++// 668–919：只有 64 窄条，expanded 表示整条隐藏；≥1025：无条件完整形态
++function leftbarRailOnly() {
++  return typeof window.matchMedia === 'function' && window.matchMedia(leftbarRailOnlyQuery).matches;
++}
++
++function leftbarFullOnly() {
++  return typeof window.matchMedia === 'function' && window.matchMedia(leftbarFullOnlyQuery).matches;
++}
++
++function storedLeftbarState() {
++  try {
++    return localStorage.getItem(leftbarStateKey) === 'collapsed' ? 'collapsed' : 'expanded';
++  } catch (error) {
++    return 'expanded';
++  }
++}
++
 +// 左栏两个互相独立的维度：形态（full 340 / rail 64）与可见性（shown / hidden）。
 +// 收纳按钮只改形态，抽屉开关只改可见性，两者分别持久化，互不覆盖。
 +function leftbarForm() {
@@ -41,10 +59,16 @@ index 28ff615..2003f88 100644
 +  return document.documentElement.dataset.leftbarVisible !== 'hidden';
 +}
 +
++// 实际渲染出来没有：抽屉区间看可见性；668–919 的 expanded 表示整条隐藏
++function leftbarShown() {
++  if (!leftbarIsVisible()) return false;
++  if (leftbarRailOnly() && leftbarForm() === 'full') return false;
++  return true;
++}
++
 +function readLeftbarVisible() {
-+  // 可见性不读也不写存储（旧值一律忽略）：≥769 内联默认显示，≤768 抽屉默认隐藏
-+    // 没有偏好时：非抽屉区间（≥668）默认显示，抽屉区间（≤667）默认隐藏
-+    return !regionUsesDrawer('leftbar');
++  // 可见性不读也不写存储：≥668 内联默认显示，≤667 抽屉默认隐藏
++  return !regionUsesDrawer('leftbar');
 +}
 +
 +function applyLeftbarVisible(visible, persist) {
@@ -63,11 +87,11 @@ index 28ff615..2003f88 100644
  function regionHiddenWhenClosed(region) {
    if (typeof window.matchMedia !== 'function') return false;
 -  if (region === 'leftbar') return window.matchMedia(leftbarHiddenQuery).matches;
-+  if (region === 'leftbar') return !leftbarIsVisible();
++  if (region === 'leftbar') return !leftbarShown();
    return regionUsesDrawer(region);
  }
  
-@@ -138,15 +168,11 @@ function setRegionInteractive(region, interactive) {
+@@ -138,15 +193,18 @@ function setRegionInteractive(region, interactive) {
  
  function syncLeftbarControls() {
    syncRightbarFocus();
@@ -75,37 +99,44 @@ index 28ff615..2003f88 100644
 -  const expanded = drawer
 -    ? siteShell?.dataset.drawer === 'leftbar'
 -    : document.documentElement.dataset.leftbarState !== 'collapsed';
-+  // 收纳按钮只改形态，所以它的 aria 始终反映 form（与宽度、可见性无关）
++  const railOnly = leftbarRailOnly();
 +  const rail = leftbarForm() === 'rail';
    document.querySelectorAll('[data-shell-action="toggle-leftbar"]').forEach(function (button) {
 -    button.setAttribute('aria-expanded', String(expanded));
 -    button.setAttribute('aria-label', drawer
 -      ? (expanded ? 'Close leftbar' : 'Open leftbar')
 -      : (expanded ? 'Collapse leftbar' : 'Expand leftbar'));
++    if (railOnly) {
++      // 668–919：按钮表达「隐藏窄条 / 显示窄条」，不是展开/收起
++      button.setAttribute('aria-expanded', String(rail));
++      button.setAttribute('aria-label', rail ? 'Hide leftbar' : 'Show leftbar');
++      return;
++    }
++    // 其余区间：按钮只改形态，aria 反映 form（与宽度、可见性无关）
 +    button.setAttribute('aria-expanded', String(!rail));
 +    button.setAttribute('aria-label', rail ? 'Expand leftbar' : 'Collapse leftbar');
    });
  }
  
-@@ -163,12 +189,15 @@ function syncDrawerControls() {
+@@ -163,12 +221,15 @@ function syncDrawerControls() {
    syncRightbarFocus();
    const openRegion = siteShell?.dataset.drawer || '';
    ['leftbar', 'rightbar'].forEach(function (region) {
 -    const open = openRegion === region && regionUsesDrawer(region);
-+    // 左栏的开关只表示可见性（rail 可见时没有 data-drawer）；右栏仍是抽屉本体
++    // 左栏的开关只表示「栏是否真的在」，右栏仍是抽屉本体
 +    const open = region === 'leftbar'
-+      ? leftbarIsVisible()
++      ? leftbarShown()
 +      : (openRegion === region && regionUsesDrawer(region));
      document.querySelectorAll('[data-shell-action="toggle-' + region + '-drawer"]').forEach(function (button) {
        button.setAttribute('aria-expanded', String(open));
        button.setAttribute('aria-label', (open ? 'Close ' : 'Open ') + region);
      });
 -    setRegionInteractive(region, open || !regionUsesDrawer(region));
-+    setRegionInteractive(region, region === 'leftbar' ? leftbarIsVisible() : (open || !regionUsesDrawer(region)));
++    setRegionInteractive(region, region === 'leftbar' ? leftbarShown() : (open || !regionUsesDrawer(region)));
    });
  }
  
-@@ -180,16 +209,41 @@ function focusRegion(region) {
+@@ -180,16 +241,46 @@ function focusRegion(region) {
  function dismissDrawer(options) {
    if (!siteShell) return;
    const restoreFocus = options?.restoreFocus !== false;
@@ -146,6 +177,11 @@ index 28ff615..2003f88 100644
 -  if (!siteShell || !regionUsesDrawer(region) || !regionElement(region)) return;
 +  if (!siteShell || !regionElement(region)) return;
 +  if (region === 'leftbar') {
++    // 668–919：dock/菜单按钮表达「隐藏/显示窄条」，不涉及抽屉
++    if (leftbarRailOnly()) {
++      toggleLeftbarState();
++      return;
++    }
 +    toggleLeftbarVisible(trigger);
 +    return;
 +  }
@@ -153,13 +189,29 @@ index 28ff615..2003f88 100644
    const open = siteShell.dataset.drawer === region;
    if (open) {
      dismissDrawer();
-@@ -207,14 +261,11 @@ function toggleLeftbarState() {
-   const state = root.dataset.leftbarState === 'collapsed' ? 'expanded' : 'collapsed';
-   root.dataset.leftbarState = state;
-   try { localStorage.setItem(leftbarStateKey, state); } catch (error) {}
--  syncLeftbarControls();
-+  // 抽屉区间里只有 full 才该有遮罩：形态变了就重算一次（不改可见性、不落盘）
+@@ -202,19 +293,23 @@ function toggleDrawer(region, trigger) {
+   focusRegion(region);
+ }
+ 
++function setLeftbarState(state, persist) {
++  document.documentElement.dataset.leftbarState = state;
++  if (persist) {
++    try { localStorage.setItem(leftbarStateKey, state); } catch (error) {}
++  }
++  // 形态变化会影响抽屉遮罩、aria 与 inert：重算一次（可见性不落盘）
 +  applyLeftbarVisible(leftbarIsVisible(), false);
++}
++
+ function toggleLeftbarState() {
+-  const root = document.documentElement;
+-  const state = root.dataset.leftbarState === 'collapsed' ? 'expanded' : 'collapsed';
+-  root.dataset.leftbarState = state;
+-  try { localStorage.setItem(leftbarStateKey, state); } catch (error) {}
+-  syncLeftbarControls();
++  // ≥1025 永远完整，按钮已隐藏；防御性拦截，避免外部调用改写形态
++  if (leftbarFullOnly()) return;
++  const state = document.documentElement.dataset.leftbarState === 'collapsed' ? 'expanded' : 'collapsed';
++  setLeftbarState(state, true);
  }
  
 -function toggleLeftbar(trigger) {
@@ -171,23 +223,24 @@ index 28ff615..2003f88 100644
    toggleLeftbarState();
  }
  
-@@ -363,8 +414,9 @@ const shellActions = {
+@@ -363,8 +458,10 @@ const shellActions = {
    'toggle-toc': function (trigger) { toggleToc(trigger); }
  };
  
 -syncLeftbarControls();
 -syncDrawerControls();
-+// 左栏：可见性按当前宽度落到 dataset，再统一重算抽屉链路（抽屉区间且 full 才带遮罩）
-+  // 可见性只由当前宽度决定（不读不写存储）；668→667 跨越回抽屉默认，667→668 回内联显示
-+  applyLeftbarVisible(readLeftbarVisible(), false);
++// 左栏：形态先按带宽归一（≥1025 无条件 full，不落盘），再落可见性并重算抽屉链路
++// 可见性只由当前宽度决定（不读不写存储）；668→667 跨越回抽屉默认，667→668 回内联显示
++if (leftbarFullOnly()) document.documentElement.dataset.leftbarState = 'expanded';
++applyLeftbarVisible(readLeftbarVisible(), false);
  document.addEventListener('pointerdown', function () {
    shellInputModality = 'pointer';
  });
-@@ -375,6 +427,17 @@ document.addEventListener('click', function (event) {
+@@ -375,6 +472,17 @@ document.addEventListener('click', function (event) {
    event.preventDefault();
    shellActions[action](trigger);
  });
-+// ≤768 抽屉/窄条展开时：点击左栏以外的任何区域都收起（只改可见性，form 不动）。
++// ≤667 抽屉展开时：点击左栏以外的任何区域都收起（只改可见性，form 不动）。
 +// 捕获阶段处理，兼容正文里 stopPropagation 的组件；栏内点击、遮罩与开关按钮交给原有逻辑。
 +document.addEventListener('click', function (event) {
 +  if (!regionUsesDrawer('leftbar') || !leftbarIsVisible()) return;
@@ -201,33 +254,44 @@ index 28ff615..2003f88 100644
  document.addEventListener('keydown', function (event) {
    shellInputModality = 'keyboard';
    if (event.key === 'Escape') {
-@@ -394,15 +457,30 @@ searchDialog?.addEventListener('change', function (event) {
+@@ -394,15 +502,40 @@ searchDialog?.addEventListener('change', function (event) {
    if (event.target?.name !== 'site-search-scope') return;
    applySearchScope(searchDialog, event.target.value);
  });
 +  let leftbarDrawerMQL = null;
 +  let leftbarHiddenMQL = null;
++  let leftbarRailOnlyMQL = null;
++  let leftbarFullOnlyMQL = null;
 +  let rightbarDrawerMQL = null;
  if (typeof window.matchMedia === 'function') {
-   [leftbarDrawerQuery, leftbarHiddenQuery, rightbarDrawerQuery].filter(function (query, index, queries) {
+-  [leftbarDrawerQuery, leftbarHiddenQuery, rightbarDrawerQuery].filter(function (query, index, queries) {
++  [leftbarDrawerQuery, leftbarHiddenQuery, leftbarRailOnlyQuery, leftbarFullOnlyQuery, rightbarDrawerQuery].filter(function (query, index, queries) {
      return queries.indexOf(query) === index;
    }).map(function (query) {
 -    return window.matchMedia(query);
 +    const mql = window.matchMedia(query);
 +    if (query === leftbarDrawerQuery) leftbarDrawerMQL = mql;
 +    if (query === leftbarHiddenQuery) leftbarHiddenMQL = mql;
++    if (query === leftbarRailOnlyQuery) leftbarRailOnlyMQL = mql;
++    if (query === leftbarFullOnlyQuery) leftbarFullOnlyMQL = mql;
 +    if (query === rightbarDrawerQuery) rightbarDrawerMQL = mql;
 +    return mql;
    }).forEach(function (media) {
      const handleChange = function () {
 -      dismissDrawer({ restoreFocus: false });
 -      syncDrawerControls();
-+      // 跨断点只重算渲染形态：左栏可见性不因宽度变化而改写，也不落盘
-+      // 跨入右栏常驻区间（≥1181）：左栏强制显示（安全兜底；临时状态，不落盘）
-+      if (media === rightbarDrawerMQL && !media.matches) {
++      if (media === leftbarFullOnlyMQL) {
++        // 进入 ≥1025 强制完整、离开时回到存储形态；两个方向都不写存储
++        setLeftbarState(media.matches ? 'expanded' : storedLeftbarState(), false);
++      } else if (media === leftbarRailOnlyMQL) {
++        // 668/919 边界只影响按钮语义与 inert，形态与存储都不动
++        syncDrawerControls();
++        syncLeftbarControls();
++      } else if (media === rightbarDrawerMQL && !media.matches) {
++        // 跨入右栏常驻区间（≥1181）：左栏强制显示（安全兜底；临时状态，不落盘）
 +        applyLeftbarVisible(true, false);
 +      } else {
-+        // 其余跨越（含 1181→≤1180）：回到记忆值——stored 优先，无偏好按当前宽度默认（≤1180 隐藏）
++        // 其余跨越（含 1181→≤1180）：回到宽度决定的可见性
 +        applyLeftbarVisible(readLeftbarVisible(), false);
 +      }
 +      if (siteShell?.dataset.drawer === 'rightbar') dismissDrawer({ restoreFocus: false });
@@ -235,7 +299,7 @@ index 28ff615..2003f88 100644
      };
      if (typeof media.addEventListener === 'function') media.addEventListener('change', handleChange);
      else if (typeof media.addListener === 'function') media.addListener(handleChange);
-@@ -1018,3 +1096,16 @@ init.wikiStart();
+@@ -1018,3 +1151,16 @@ init.wikiStart();
  init.wikiCover();
  init.leftbarScroll();
  init.canonicalCheck();
@@ -253,7 +317,6 @@ index 28ff615..2003f88 100644
 +
 +
 diff --git a/node_modules/hexo-theme-stellar/source/js/runtime/index.js b/node_modules/hexo-theme-stellar/source/js/runtime/index.js
-index 42ddcd5..b8ccf53 100644
 --- a/node_modules/hexo-theme-stellar/source/js/runtime/index.js
 +++ b/node_modules/hexo-theme-stellar/source/js/runtime/index.js
 @@ -81,7 +81,15 @@ async function start() {

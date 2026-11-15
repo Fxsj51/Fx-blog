@@ -5,10 +5,10 @@
 //
 // 同源三处：
 //   1. source/css/site-custom.css 媒体查询字面量
-//      （1180/1181：右栏抽屉 + 左栏抽屉渲染 + 无右栏页左栏常驻；900：窄屏背景图）
+//      （1180/1181：右栏抽屉；667/668、919/920、1024/1025：左栏梯次；900：窄屏背景图）
 //   2. _config.stellar.yml 背景图 preload 的 media 属性（901/900）、body_end 注入脚本里的
-//      RIGHTBAR_DRAWER_MAX，以及 head_end 注入脚本里的 LEFTBAR_DRAWER_MAX（=1180，
-//      左栏抽屉区间与右栏同宽；≥1181 左栏常驻无条件自动出现，≤1180 默认隐藏）
+//      RIGHTBAR_DRAWER_MAX，以及 head_end 注入脚本里的 LEFTBAR_DRAWER_MAX（=667，抽屉上限）
+//      与 LEFTBAR_FULL_MIN（=1025，无条件完整形态下限）
 //   3. patches/hexo-theme-stellar+2.0.0.patch 里主题的 rightbarDrawerQuery / leftbar*Query
 // 另外 source/music/index.md 自带 <style> 也用了 1180/1181，一并校验。
 const fs = require('fs');
@@ -16,6 +16,9 @@ const path = require('path');
 
 const RIGHTBAR_DRAWER_MAX = 1180;
 const LEFTBAR_DRAWER_MAX = 667;
+// 668–919 只有 64 窄条；920 起允许完整 340（主栏 ≥560 的算值：340 + 560 + 17 滚动条 = 917，取整 920）
+const LEFTBAR_RAIL_MAX = 919;
+const LEFTBAR_FULL_MIN = 1025;
 // 背景图切换断点（与侧栏无关，保持独立）
 const BACKGROUND_MAX = 900;
 
@@ -54,6 +57,12 @@ function check() {
   } else if (Number(leftJsConstant[1]) !== LEFTBAR_DRAWER_MAX) {
     errors.push(`LEFTBAR_DRAWER_MAX 为 ${leftJsConstant[1]}，应为 ${LEFTBAR_DRAWER_MAX}`);
   }
+  const leftFullJsConstant = config.match(/var LEFTBAR_FULL_MIN = (\d+);/);
+  if (!leftFullJsConstant) {
+    errors.push('head_end 注入脚本里找不到 `var LEFTBAR_FULL_MIN = ...;`');
+  } else if (Number(leftFullJsConstant[1]) !== LEFTBAR_FULL_MIN) {
+    errors.push(`LEFTBAR_FULL_MIN 为 ${leftFullJsConstant[1]}，应为 ${LEFTBAR_FULL_MIN}`);
+  }
 
   // 1c. 背景图 preload 的 media 属性必须与断点一致（桌面 901+ / 移动 ≤900）
   const preloadDesktop = (config.match(/media="\(min-width: 901px\)"/g) || []).length;
@@ -63,10 +72,13 @@ function check() {
       `实际 ${preloadDesktop} / ${preloadMobile}`);
   }
 
-  // 1d. head_end 初始可见性：按抽屉断点决定（≥769 内联默认显示，≤768 抽屉默认隐藏）
-  //     依据：左栏在非抽屉区间内联常驻（可收窄条），抽屉区间默认隐藏
+  // 1d. head_end 初始可见性与 ≥1025 强制完整：按左栏梯次决定
+  //     依据：≤667 抽屉默认隐藏；≥668 内联默认显示；≥1025 无条件完整（不读存储也不写）
   if (!config.match(/window\.innerWidth > LEFTBAR_DRAWER_MAX/)) {
     errors.push('head_end 注入脚本里找不到 `window.innerWidth > LEFTBAR_DRAWER_MAX`（初始可见性判定）');
+  }
+  if (!config.match(/window\.innerWidth >= LEFTBAR_FULL_MIN/)) {
+    errors.push('head_end 注入脚本里找不到 `window.innerWidth >= LEFTBAR_FULL_MIN`（≥1025 强制完整形态）');
   }
 
   // 2. 媒体查询字面量：按「出现次数」比对，避免只改其中一处时漏检
@@ -74,11 +86,14 @@ function check() {
   //    自定义样式已拆分到 source/css/site-custom.css，由 minify 压缩、全站共享缓存
   const css = stripComments(read('source/css/site-custom.css'));
   const expected = [
-    ['max', RIGHTBAR_DRAWER_MAX, 2],      // 右栏抽屉：样式 + 透明背景（≤1180 右栏抽屉化）
-    ['max', LEFTBAR_DRAWER_MAX, 1],       // 左栏抽屉渲染：移动顶栏 + 单列 + 左栏滑出（≤667）
-    ['min', 668, 1],                      // 668–768 内联覆盖块（窄条边界对齐 nightfall7）
-    ['min', RIGHTBAR_DRAWER_MAX + 1, 1],  // 无右栏页面左栏常驻固定定位（右栏常驻区间的网格修正）
-    ['max', BACKGROUND_MAX, 1]            // 窄屏背景图
+    ['max', RIGHTBAR_DRAWER_MAX, 2],        // 右栏抽屉：样式 + 透明背景（≤1180 右栏抽屉化）
+    ['max', LEFTBAR_DRAWER_MAX, 1],         // 左栏抽屉渲染：移动顶栏 + 单列 + 左栏滑出（≤667）
+    ['min', LEFTBAR_DRAWER_MAX + 1, 2],     // 668–768 内联覆盖块 + 668–919 仅窄条块
+    ['max', 768, 1],                        // 668–768 内联覆盖块（主题 ≤768 抽屉化抵消）
+    ['max', LEFTBAR_RAIL_MAX, 1],           // 668–919 仅窄条 + 隐藏态恢复入口
+    ['min', LEFTBAR_FULL_MIN, 1],           // ≥1025 隐藏收纳按钮（形态由 JS/首帧归一）
+    ['min', RIGHTBAR_DRAWER_MAX + 1, 1],    // 无右栏页面左栏常驻固定定位（右栏常驻区间的网格修正）
+    ['max', BACKGROUND_MAX, 1]              // 窄屏背景图
   ];
   expected.forEach(([kind, width, count]) => {
     const actual = countLiteral(css, kind, width);
@@ -94,12 +109,15 @@ function check() {
   const nearMiss = [
     RIGHTBAR_DRAWER_MAX - 1, RIGHTBAR_DRAWER_MAX + 2,
     LEFTBAR_DRAWER_MAX - 1, LEFTBAR_DRAWER_MAX + 2,
+    LEFTBAR_RAIL_MAX - 1, LEFTBAR_RAIL_MAX + 2,
+    LEFTBAR_FULL_MIN - 1, LEFTBAR_FULL_MIN + 2,
     BACKGROUND_MAX - 1, BACKGROUND_MAX + 1
   ];
   widths.forEach(width => {
     if (nearMiss.includes(width)) {
       errors.push(`source/css/site-custom.css 出现可疑断点 ${width}px（应使用 ${RIGHTBAR_DRAWER_MAX}/${RIGHTBAR_DRAWER_MAX + 1}、` +
-        `${LEFTBAR_DRAWER_MAX}/${LEFTBAR_DRAWER_MAX + 1} 或 ${BACKGROUND_MAX}）`);
+        `${LEFTBAR_DRAWER_MAX}/${LEFTBAR_DRAWER_MAX + 1}、${LEFTBAR_RAIL_MAX}/${LEFTBAR_RAIL_MAX + 1}、` +
+        `${LEFTBAR_FULL_MIN}/${LEFTBAR_FULL_MIN + 1} 或 ${BACKGROUND_MAX}）`);
     }
   });
 
@@ -134,11 +152,19 @@ function check() {
   if (patchLeft !== 2) {
     errors.push(`patches/ 补丁中 max-width: ${LEFTBAR_DRAWER_MAX}px 出现 ${patchLeft} 处，期望 2 处（leftbarDrawerQuery / leftbarHiddenQuery，断点 667）`);
   }
+  const patchRailOnly = countLiteral(patch, 'max', LEFTBAR_RAIL_MAX);
+  if (patchRailOnly !== 1) {
+    errors.push(`patches/ 补丁中 max-width: ${LEFTBAR_RAIL_MAX}px 出现 ${patchRailOnly} 处，期望 1 处（leftbarRailOnlyQuery）`);
+  }
+  const patchFullOnly = countLiteral(patch, 'min', LEFTBAR_FULL_MIN);
+  if (patchFullOnly !== 1) {
+    errors.push(`patches/ 补丁中 min-width: ${LEFTBAR_FULL_MIN}px 出现 ${patchFullOnly} 处，期望 1 处（leftbarFullOnlyQuery）`);
+  }
 
   if (errors.length) {
     throw new Error('[breakpoints] 断点校验失败：\n- ' + errors.join('\n- '));
   }
-  console.log('[breakpoints] 断点校验通过（1180/1181 右栏、768/769 左栏、背景图 900、注入 JS 与 patches 一致）');
+  console.log('[breakpoints] 断点校验通过（1180/1181 右栏、667/668 + 919/920 + 1024/1025 左栏、背景图 900、注入 JS 与 patches 一致）');
 }
 
 hexo.extend.filter.register('before_generate', check);

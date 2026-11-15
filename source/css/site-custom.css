@@ -3,16 +3,17 @@
  * 原先内联在 _config.stellar.yml 的 inject.head_end 里，随每个页面重复下发；
  * 拆成独立文件后全站共享一份缓存，且由 tools/minify.js 统一压缩。
  * 注意：
- *  - 媒体查询断点必须保持 1180/1181（左右栏抽屉/常驻）、900（背景图），
- *    scripts/breakpoints.js 会构建期校验；
+ *  - 媒体查询断点必须保持 1180/1181（右栏抽屉/常驻）、667/668 与 919/920、
+ *    1024/1025（左栏梯次）、900（背景图），scripts/breakpoints.js 会构建期校验；
  *  - 图片路径用根绝对 /images/：hexo server（root=/）直接可用，
  *    GitHub Pages 子路径部署由 tools/minify.js 的 fixLocalPaths 统一补前缀。
  */
   /*
-   * 断点同源：本段媒体查询里的 1180/1181（左右栏）与 body_end
-   * 注入脚本的 RIGHTBAR_DRAWER_MAX、head_end 注入脚本的 LEFTBAR_DRAWER_MAX、
-   * patches/hexo-theme-stellar+2.0.0.patch 里的 rightbarDrawerQuery / leftbar*Query
-   * 必须一致。改动任意一处都会让 scripts/breakpoints.js 的构建期校验失败。
+   * 断点同源：本段媒体查询里的 1180/1181（右栏）、667/668、919/920、1024/1025（左栏）
+   * 与 body_end 注入脚本的 RIGHTBAR_DRAWER_MAX、head_end 注入脚本的
+   * LEFTBAR_DRAWER_MAX/LEFTBAR_FULL_MIN、patches/hexo-theme-stellar+2.0.0.patch 里的
+   * rightbarDrawerQuery / leftbar*Query 必须一致。改动任意一处都会让
+   * scripts/breakpoints.js 的构建期校验失败。
    */
   :root {
     --leftbar-w: 340px;
@@ -588,7 +589,8 @@
     }
   }
 
-  /* 667px 及以下：左栏滑出抽屉（移动顶栏菜单开合）；668–1180 内联常驻（可收窄条，见下方覆盖块）；≥1181 三栏 */
+  /* 667px 及以下：左栏滑出抽屉（移动顶栏菜单开合）；668–919：仅 64 窄条（expanded 视为隐藏）；
+     920–1024：完整/窄条可切换；≥1025：永远完整（≥1181 叠加右栏三栏） */
   @media (max-width: 667px) {
     /* 顶部栏：头像+站名，也是移动端左栏唯一的显隐开关（菜单按钮） */
     #mobile-brand-bar { display: flex !important; }
@@ -668,6 +670,61 @@
     }
     .site-region--leftbar { position: sticky; top: 0; bottom: auto; transform: none; }
     .site-shell[data-drawer='leftbar'] .site-region--leftbar { position: sticky; transform: none; }
+  }
+
+  /*
+   * 668–919：只有 64px 窄条，完整形态在本段不存在。
+   * form=expanded 视为「隐藏」：整条移出布局、首列归零；668–768 的主题 reserve 同时归零。
+   * 隐藏态的唯一恢复入口是左上角浮出的主题 dock 左栏按钮（不占布局，避开右下角播放器）。
+   */
+  @media screen and (min-width: 668px) and (max-width: 919px) {
+    html[data-leftbar-state="expanded"] .site-workspace {
+      grid-template-columns: 0 minmax(0, 1000px) var(--rightbar-col-w) !important;
+    }
+    html[data-leftbar-state="expanded"] .site-shell:not([data-regions~='rightbar']) .site-workspace {
+      grid-template-columns: 0 minmax(0, 1000px) !important;
+    }
+    html[data-leftbar-state="expanded"] .site-shell {
+      --shell-left-reserve: 0px;
+      --shell-side-reserve: max(0px, var(--shell-right-reserve));
+    }
+    html[data-leftbar-state="expanded"] .site-region--leftbar {
+      display: none !important;
+    }
+    html[data-leftbar-state="expanded"] .site-shell[data-regions~='leftbar'] .site-dock {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      position: fixed !important;
+      inset-inline-start: 16px !important;
+      inset-inline-end: auto !important;
+      top: 76px !important;
+      bottom: auto !important;
+      width: auto !important;
+      height: auto !important;
+      overflow: visible !important;
+      z-index: var(--z-drawer-btn) !important;
+    }
+    html[data-leftbar-state="expanded"] .site-shell[data-regions~='leftbar'] .site-dock__button--leftbar {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      position: static !important;
+      width: 40px !important;
+      height: 40px !important;
+    }
+    html[data-leftbar-state="expanded"] .site-shell[data-regions~='leftbar'] .site-dock__button:not(.site-dock__button--leftbar) {
+      display: none !important;
+    }
+  }
+
+  /* ≥1025：永远完整 340。形态由首帧脚本与 JS 归一到 expanded（不写存储），收纳按钮无意义 */
+  @media screen and (min-width: 1025px) {
+    [data-shell-action="toggle-leftbar"] {
+      display: none !important;
+    }
   }
 
   .brand-wrap {
