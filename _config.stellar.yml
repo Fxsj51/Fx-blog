@@ -196,22 +196,19 @@ inject:
       (function() {
         var root = document.documentElement;
         var LEFTBAR_KEY = 'stellar:v2:leftbar-state';
-        var VISIBLE_KEY = 'stellar:v2:leftbar-visible';
-        // 左栏抽屉断点唯一来源：≤768 抽屉/窄条，>768 常驻。
-        // 必须与 CSS 的 768/769、patches 里的 leftbar*Query 一致。
-        var LEFTBAR_DRAWER_MAX = 768;
+        // 左栏梯次唯一来源：≤667 抽屉（移动顶栏菜单开合），668–1180 内联常驻（可收 64px 窄条），
+        // ≥1181 三栏。断点须与 CSS 的 667/668、补丁里同为 667 的 leftbarDrawerQuery/leftbarHiddenQuery 一致。
+        var LEFTBAR_DRAWER_MAX = 667;
         try {
           var s = localStorage.getItem(LEFTBAR_KEY);
           root.dataset.leftbarState = (s === 'collapsed') ? 'collapsed' : 'expanded';
         } catch(e) {
           root.dataset.leftbarState = 'expanded';
         }
-        // 可见性与形态分开存：没有偏好时 ≤768 默认隐藏（不占位、无窄条），其余宽度显示
+        // 可见性与形态分开存：没有偏好时 ≥668 默认显示（内联，可收窄条），≤667 默认隐藏
+        // （抽屉；LEFTBAR_DRAWER_MAX 仅作抽屉区间锚点，供 breakpoints.js 校验）
         var leftbarVisible = window.innerWidth > LEFTBAR_DRAWER_MAX ? 'shown' : 'hidden';
-        try {
-          var v = localStorage.getItem(VISIBLE_KEY);
-          if (v === 'shown' || v === 'hidden') leftbarVisible = v;
-        } catch(e) {}
+
         root.dataset.leftbarVisible = leftbarVisible;
         function setVh() {
           var vh = window.innerHeight * 0.01;

@@ -4,17 +4,19 @@
 // 所以这里在构建期做校验，改了一处而漏改另一处时直接构建失败。
 //
 // 同源三处：
-//   1. source/css/site-custom.css 媒体查询字面量（1180/1181 右栏、768/769 左栏、900 背景图）
+//   1. source/css/site-custom.css 媒体查询字面量
+//      （1180/1181：右栏抽屉 + 左栏抽屉渲染 + 无右栏页左栏常驻；900：窄屏背景图）
 //   2. _config.stellar.yml 背景图 preload 的 media 属性（901/900）、body_end 注入脚本里的
-//      RIGHTBAR_DRAWER_MAX，以及 head_end 注入脚本里的 LEFTBAR_DRAWER_MAX
+//      RIGHTBAR_DRAWER_MAX，以及 head_end 注入脚本里的 LEFTBAR_DRAWER_MAX（=1180，
+//      左栏抽屉区间与右栏同宽；≥1181 左栏常驻无条件自动出现，≤1180 默认隐藏）
 //   3. patches/hexo-theme-stellar+2.0.0.patch 里主题的 rightbarDrawerQuery / leftbar*Query
 // 另外 source/music/index.md 自带 <style> 也用了 1180/1181，一并校验。
 const fs = require('fs');
 const path = require('path');
 
 const RIGHTBAR_DRAWER_MAX = 1180;
-const LEFTBAR_DRAWER_MAX = 768;
-// 背景图切换断点（与左栏无关，保持独立）
+const LEFTBAR_DRAWER_MAX = 667;
+// 背景图切换断点（与侧栏无关，保持独立）
 const BACKGROUND_MAX = 900;
 
 function read(relative) {
@@ -61,15 +63,21 @@ function check() {
       `实际 ${preloadDesktop} / ${preloadMobile}`);
   }
 
+  // 1d. head_end 初始可见性：按抽屉断点决定（≥769 内联默认显示，≤768 抽屉默认隐藏）
+  //     依据：左栏在非抽屉区间内联常驻（可收窄条），抽屉区间默认隐藏
+  if (!config.match(/window\.innerWidth > LEFTBAR_DRAWER_MAX/)) {
+    errors.push('head_end 注入脚本里找不到 `window.innerWidth > LEFTBAR_DRAWER_MAX`（初始可见性判定）');
+  }
+
   // 2. 媒体查询字面量：按「出现次数」比对，避免只改其中一处时漏检
   //    （注释里的同源说明不计入；新增/删除断点媒体查询后请同步这里的期望计数）
   //    自定义样式已拆分到 source/css/site-custom.css，由 minify 压缩、全站共享缓存
   const css = stripComments(read('source/css/site-custom.css'));
   const expected = [
-    ['max', RIGHTBAR_DRAWER_MAX, 2],      // 抽屉样式、透明背景（音乐抽屉改为收起态，不再用它）
-    ['min', RIGHTBAR_DRAWER_MAX + 1, 1],  // 无右栏页面固定侧栏
-    ['max', LEFTBAR_DRAWER_MAX, 1],       // 左栏抽屉/窄条区间
-    ['min', LEFTBAR_DRAWER_MAX + 1, 2],   // 左栏常驻：占位网格 + 无右栏页固定侧栏
+    ['max', RIGHTBAR_DRAWER_MAX, 2],      // 右栏抽屉：样式 + 透明背景（≤1180 右栏抽屉化）
+    ['max', LEFTBAR_DRAWER_MAX, 1],       // 左栏抽屉渲染：移动顶栏 + 单列 + 左栏滑出（≤667）
+    ['min', 668, 1],                      // 668–768 内联覆盖块（窄条边界对齐 nightfall7）
+    ['min', RIGHTBAR_DRAWER_MAX + 1, 1],  // 无右栏页面左栏常驻固定定位（右栏常驻区间的网格修正）
     ['max', BACKGROUND_MAX, 1]            // 窄屏背景图
   ];
   expected.forEach(([kind, width, count]) => {
@@ -124,13 +132,13 @@ function check() {
   }
   const patchLeft = countLiteral(patch, 'max', LEFTBAR_DRAWER_MAX);
   if (patchLeft !== 2) {
-    errors.push(`patches/ 补丁中 max-width: ${LEFTBAR_DRAWER_MAX}px 出现 ${patchLeft} 处，期望 2 处（leftbarDrawerQuery / leftbarHiddenQuery）`);
+    errors.push(`patches/ 补丁中 max-width: ${LEFTBAR_DRAWER_MAX}px 出现 ${patchLeft} 处，期望 2 处（leftbarDrawerQuery / leftbarHiddenQuery，断点 667）`);
   }
 
   if (errors.length) {
     throw new Error('[breakpoints] 断点校验失败：\n- ' + errors.join('\n- '));
   }
-  console.log('[breakpoints] 断点校验通过（1180/1181、768/769、背景图 900、注入 JS 与 patches 一致）');
+  console.log('[breakpoints] 断点校验通过（1180/1181 右栏、768/769 左栏、背景图 900、注入 JS 与 patches 一致）');
 }
 
 hexo.extend.filter.register('before_generate', check);

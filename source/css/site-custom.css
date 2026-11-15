@@ -3,13 +3,13 @@
  * 原先内联在 _config.stellar.yml 的 inject.head_end 里，随每个页面重复下发；
  * 拆成独立文件后全站共享一份缓存，且由 tools/minify.js 统一压缩。
  * 注意：
- *  - 媒体查询断点必须保持 1180/1181（右栏）、768/769（左栏）、900（背景图），
+ *  - 媒体查询断点必须保持 1180/1181（左右栏抽屉/常驻）、900（背景图），
  *    scripts/breakpoints.js 会构建期校验；
  *  - 图片路径用根绝对 /images/：hexo server（root=/）直接可用，
  *    GitHub Pages 子路径部署由 tools/minify.js 的 fixLocalPaths 统一补前缀。
  */
   /*
-   * 断点同源：本段媒体查询里的 1180/1181（右栏）、768/769（左栏）与 body_end
+   * 断点同源：本段媒体查询里的 1180/1181（左右栏）与 body_end
    * 注入脚本的 RIGHTBAR_DRAWER_MAX、head_end 注入脚本的 LEFTBAR_DRAWER_MAX、
    * patches/hexo-theme-stellar+2.0.0.patch 里的 rightbarDrawerQuery / leftbar*Query
    * 必须一致。改动任意一处都会让 scripts/breakpoints.js 的构建期校验失败。
@@ -319,21 +319,6 @@
     grid-template-columns: var(--leftbar-w-collapsed) minmax(0, 1000px) !important;
   }
   /*
-   * 可见性与形态是两个独立维度：hidden 只让整栏移出并不占位，
-   * 不改 data-leftbar-state —— 恢复时仍按原形态（full / rail）呈现。
-   */
-  @media screen and (min-width: 769px) {
-    html[data-leftbar-visible='hidden'] aside#leftbar-region {
-      display: none !important;
-    }
-    html[data-leftbar-visible='hidden'] .site-workspace {
-      grid-template-columns: 0 minmax(0, 1000px) var(--rightbar-col-w) !important;
-    }
-    html[data-leftbar-visible='hidden'] .site-shell:not([data-regions~='rightbar']) .site-workspace {
-      grid-template-columns: 0 minmax(0, 1000px) !important;
-    }
-  }
-  /*
    * 无右栏页面（≥1181px，右栏为常驻列的区间）：
    * 1. 两列布局会让整块重新居中，左栏因此随页面切换横向位移。把左栏改为固定定位，直接钉在与首页/文章页
    *    相同的横向位置，不再受网格列数变化（含换页时的列过渡）影响。
@@ -603,8 +588,8 @@
     }
   }
 
-  /* 768px 及以下：左栏默认隐藏；显示时按记忆形态渲染，769 起常驻 */
-  @media (max-width: 768px) {
+  /* 667px 及以下：左栏滑出抽屉（移动顶栏菜单开合）；668–1180 内联常驻（可收窄条，见下方覆盖块）；≥1181 三栏 */
+  @media (max-width: 667px) {
     /* 顶部栏：头像+站名，也是移动端左栏唯一的显隐开关（菜单按钮） */
     #mobile-brand-bar { display: flex !important; }
 
@@ -664,6 +649,25 @@
       padding: 20px var(--gap-xs) !important;
       align-items: center !important;
     }
+  }
+  /*
+   * 668–768：左栏保持内联常驻（窄条边界与 nightfall7 对齐：≥668 可收窄条、≤667 抽屉）。
+   * 覆盖主题 ≤768 的抽屉化（reserve 归零 + 滑出屏幕）：恢复 shell reserve、sticky 内联定位与正文让位。
+   * 本文件在主题 main.css 之后加载，同特异性下后写胜出。
+   */
+  @media screen and (min-width: 668px) and (max-width: 768px) {
+    .site-shell {
+      --shell-left-reserve: calc(var(--leftbar-width) + var(--shell-left-gap));
+      --shell-side-reserve: max(var(--shell-left-reserve), var(--shell-right-reserve));
+      --shell-side-gap: max(var(--gap-page), var(--shell-gap), var(--shell-left-gap));
+    }
+    .site-shell[data-regions~='leftbar'] .site-main {
+      width: min(var(--width-main), max(0px, calc(100% - var(--shell-left-reserve) - var(--shell-side-gap) - var(--shell-side-gap))));
+      margin-inline: 0;
+      margin-inline-start: calc(var(--shell-left-reserve) + max(var(--shell-side-gap), (100% - var(--shell-left-reserve) - var(--width-main)) / 2));
+    }
+    .site-region--leftbar { position: sticky; top: 0; bottom: auto; transform: none; }
+    .site-shell[data-drawer='leftbar'] .site-region--leftbar { position: sticky; transform: none; }
   }
 
   .brand-wrap {
@@ -730,20 +734,6 @@
     flex-direction: column !important;
     gap: var(--gap-lg) !important;
     align-items: center !important;
-  }
-  /*
-   * 无右栏页面在 769–1180 常驻区间：左栏同样固定。
-   * .site-workspace 为防横向溢出设了 overflow-x: hidden，会把它变成滚动容器，
-   * 左栏的 sticky 因此以 workspace 为参照、跟随页面一起滚走；这里改为 fixed。
-   * 不写 inset-inline-start：保留网格给的静态位置，展开态贴 0、折叠态沿用居中偏移，
-   * ≥1181 时仍由上面的 --nd-off 规则接管横向位置，互不覆盖。
-   * ≤768 是抽屉（top: 76px），不能被这条规则覆盖。
-   */
-  @media screen and (min-width: 769px) {
-    .site-shell:not([data-regions~='rightbar']) aside#leftbar-region {
-      position: fixed !important;
-      top: 0 !important;
-    }
   }
 
   .post-list { display: flex !important; flex-direction: column !important; gap: var(--gap-2xl) !important; width: 100% !important; }
@@ -1155,6 +1145,7 @@
 
   /* 播放器视觉样式见下方 .site-mini 规则（source/js/site-player.js 构建 DOM） */
 
+  /* 主题 dock 常态隐藏：右栏开合由自研 custom-rightbar-toggle 承担（见上方 769 媒体块） */
   .site-dock,
   .site-dock__button {
     display: none !important;
@@ -1366,3 +1357,9 @@
   .giscus-wrap {
     margin-top: 2rem;
   }
+
+
+
+
+
+
