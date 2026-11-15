@@ -17,7 +17,8 @@ const ASSERT = [
   ['verify-loop-vol.js', '循环三态、音量四档与持久化、键盘、375 无溢出'],
   ['verify-disc-toggle.js', '唱片播放/暂停、进度条拖动、断点 900/901/1180/1181'],
   ['verify-quote.js', '首页一言卡、卡片高度稳定、SPA 重建、375 抽屉不重叠'],
-  ['verify-dark-forced.js', '浅色偏好下仍强制深色：data-theme、color-scheme、基色与分享栏对比度']
+  ['verify-dark-forced.js', '浅色偏好下仍强制深色：data-theme、color-scheme、基色与分享栏对比度'],
+  ['verify-leftbar-restore.js', '左栏收起不落盘、跨断点自动恢复、dock 紧急恢复入口']
 ];
 
 // 观测型：打印实测值，不参与通过/失败判定

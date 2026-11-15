@@ -87,7 +87,7 @@ const syncOk = (s) => s.playing === (s.label === '暂停') && s.dLabel === s.lab
     await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 });
     await sleep(wait == null ? 280 : wait);
   };
-  const clickSel = async (sel, wait) => { const r = await rectOf(sel); if (!r) throw new Error('no rect ' + sel); await clickAt(r.x + r.w / 2, r.y + r.h / 2, wait); };
+  const clickSel = async (sel, wait) => { await ev(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); if (e) e.scrollIntoView({ block: 'center' }); })()`); await sleep(150); const r = await rectOf(sel); if (!r) throw new Error('no rect ' + sel); await clickAt(r.x + r.w / 2, r.y + r.h / 2, wait); };
   const key = async (k, code, vk, text) => {
     const b = { key: k, code: code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
     if (text) b.text = text;
@@ -103,7 +103,7 @@ const syncOk = (s) => s.playing === (s.label === '暂停') && s.dLabel === s.lab
   };
   const size = (w, h) => send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
   const spaTo = async (p) => {
-    const done = await ev(`(() => { const a = [...document.querySelectorAll('a[href]')].find((x) => { try { return new URL(x.href).pathname === ${JSON.stringify(p)}; } catch (e) { return false; } }); if (a) { a.click(); return true; } return false; })()`);
+  const done = await ev(`(() => { const a = [...document.querySelectorAll('a[href]')].find((x) => { try { return new URL(x.href).pathname.endsWith(${JSON.stringify(p)}); } catch (e) { return false; } }); if (a) { a.click(); return true; } return false; })()`);
     await sleep(2400);
     return done;
   };
@@ -262,3 +262,5 @@ const syncOk = (s) => s.playing === (s.label === '暂停') && s.dLabel === s.lab
   ws.close(); proc.kill();
   process.exit(fails.length ? 1 : 0);
 })().catch((e) => { console.error('FATAL', (e && e.stack) || e); process.exit(2); });
+
+

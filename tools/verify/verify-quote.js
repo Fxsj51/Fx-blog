@@ -103,8 +103,9 @@ const record = (name, ok, detail) => { results.push({ name, ok, detail }); conso
   for (let i = 0; i < 100; i++) { if (await ev('location.pathname.indexOf("hello-world") >= 0')) break; await sleep(100); }
   await sleep(800);
   const onPost = await ev(`({ path: location.pathname, audio: document.querySelectorAll('audio').length })`);
-  await ev(`(() => { const a = document.querySelector('#leftbar-region a[href="/"]'); if (a) a.click(); return !!a; })()`);
-  for (let i = 0; i < 100; i++) { if (await ev('location.pathname === "/"')) break; await sleep(100); }
+  const qroot = await ev(`window.__qroot = (() => { const a = document.querySelector('#leftbar-region a'); try { return new URL(a.href).pathname; } catch (e) { return '/'; } })()`);
+  await ev(`(() => { const a = document.querySelector('#leftbar-region a'); if (a) a.click(); return !!a; })()`);
+  for (let i = 0; i < 100; i++) { if (await ev('location.pathname === window.__qroot')) break; await sleep(100); }
   await sleep(4200);
   const back = await ev(`(() => {
     const box = document.getElementById('custom-quote');
@@ -116,7 +117,7 @@ const record = (name, ok, detail) => { results.push({ name, ok, detail }); conso
       audio: document.querySelectorAll('audio').length
     };
   })()`);
-  record('SPA 往返后卡片重建且不重复', back.path === '/' && back.cardCount === 1 && back.quoteCount === 1 && back.text.length > 0, { onPost, back });
+  record('SPA 往返后卡片重建且不重复', back.path === qroot && back.cardCount === 1 && back.quoteCount === 1 && back.text.length > 0, { onPost, back });
   record('SPA 往返后 1 个 audio', back.audio === 1, { audio: back.audio });
 
   // 接口失败兜底：拦截 hitokoto 后重新加载

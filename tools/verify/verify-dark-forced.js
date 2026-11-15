@@ -108,9 +108,9 @@ const colorProbe = `(() => {
   const shotPost = path.join(SHOTS, 'dark-post-lightpref.png');
   fs.writeFileSync(shotPost, Buffer.from(png.data, 'base64'));
 
-  // SPA 往返一次，确认属性保持且无异常
-  await ev(`(() => { const a = document.querySelector('#leftbar-region a[href="/"]'); if (a) a.click(); return !!a; })()`);
-  for (let i = 0; i < 100; i++) { if (await ev('location.pathname === "/"')) break; await sleep(100); }
+  // SPA 往返一次，确认属性保持且无异常（首页入口 = 左栏品牌链接，root 感知）
+  await ev(`(() => { const a = document.querySelector('#leftbar-region a'); if (a) a.click(); return !!a; })()`);
+  for (let i = 0; i < 100; i++) { if (await ev('location.pathname.indexOf("hello-world") < 0')) break; await sleep(100); }
   await sleep(1500);
   const back = await ev(`document.documentElement.getAttribute('data-theme')`);
   record('SPA 往返后 data-theme 保持 dark', back === 'dark', back);

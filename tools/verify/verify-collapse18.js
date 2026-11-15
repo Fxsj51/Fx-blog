@@ -236,11 +236,13 @@ const S = `(() => {
   ok('恢复 no-preference 后动画回来', rm2.anim === 'site-mini-spin', { anim: rm2.anim });
 
   // ---------- I. SPA 往返 ----------
-  await ev(`(() => { const a = [...document.querySelectorAll('a[href]')].find((x) => new URL(x.href).pathname === '/'); if (a) a.click(); return true; })()`);
+  // 站点根路径从 DOM 派生（root=/Fx-blog/ 时站内链接都带前缀，不能假设 '/'）
+  await ev(`window.__siteRoot = (() => { const a = document.querySelector('#leftbar-region a'); try { return new URL(a.href).pathname; } catch (e) { return '/'; } })()`);
+  await ev(`(() => { const a = [...document.querySelectorAll('a[href]')].find((x) => new URL(x.href).pathname === window.__siteRoot); if (a) a.click(); return true; })()`);
   await sleep(2000);
   const home = await ev(S);
   ok('SPA 回首页（有右栏）→ 整条展开', !home.collapsed && home.w === 360, { collapsed: home.collapsed, w: home.w });
-  await ev(`(() => { const a = [...document.querySelectorAll('a[href]')].find((x) => new URL(x.href).pathname === '/2026/11/04/hello-world/'); if (a) a.click(); return true; })()`);
+  await ev(`(() => { const a = [...document.querySelectorAll('a[href]')].find((x) => new URL(x.href).pathname === window.__siteRoot + '2026/11/04/hello-world/'); if (a) a.click(); return true; })()`);
   await sleep(2200);
   const art = await ev(S);
   ok('SPA 回文章页 → 恢复圆形封面', art.collapsed && art.w === 76 && art.audio === 1, { collapsed: art.collapsed, w: art.w, audio: art.audio });
@@ -270,7 +272,9 @@ const S = `(() => {
   const bp = {};
   for (const w of [1180, 1181]) {
     await send('Emulation.setDeviceMetricsOverride', { width: w, height: 900, deviceScaleFactor: 1, mobile: false });
-    await nav(BASE + '/');
+    // 站点根路径从 DOM 派生（root=/Fx-blog/ 时首页是 /Fx-blog/ 而非 /）
+    const siteRootPath = await ev(`(() => { const a = document.querySelector('#leftbar-region a'); try { return new URL(a.href).pathname; } catch (e) { return '/'; } })()`);
+    await nav(BASE.replace(/\/$/, '') + siteRootPath);
     await moveTo(10, 10);
     bp[w] = await ev(S);
   }

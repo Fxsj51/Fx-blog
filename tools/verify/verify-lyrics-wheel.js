@@ -93,11 +93,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await wheel(4);
   console.log('C wheel4 ' + JSON.stringify(await ev(state)));
 
-  // SPA 往返
-  await ev(`(() => { const a = [...document.querySelectorAll('a')].find((x) => new URL(x.href, location.href).pathname === '/'); if (a) a.click(); return !!a; })()`);
+  // SPA 往返（root 感知：首页 = 左栏品牌链接；音乐页 = pathname 后缀匹配）
+  await ev(`(() => { const a = document.querySelector('#leftbar-region a'); if (a) a.click(); return !!a; })()`);
   await sleep(1500);
   const home = await ev('({ path: location.pathname, audio: document.querySelectorAll("audio").length })');
-  await ev(`(() => { const a = [...document.querySelectorAll('a')].find((x) => new URL(x.href, location.href).pathname === '/music/'); if (a) a.click(); return !!a; })()`);
+  await ev(`(() => { const a = [...document.querySelectorAll('a')].find((x) => new URL(x.href, location.href).pathname.endsWith('/music/')); if (a) a.click(); return !!a; })()`);
   await sleep(1800);
   const back = await ev(`(() => { const box = document.getElementById('music-lyrics-scroll'); return { path: location.pathname, audio: document.querySelectorAll('audio').length, cls: box ? box.className : null, scrollTop: box ? Math.round(box.scrollTop) : null, sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }; })()`);
   console.log('SPA ' + JSON.stringify({ home, back }));
